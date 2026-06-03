@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
+import { adminApiRequest } from "../ghostAdminClient";
 import { runTool, browseParams, selectionParams, formatsParam } from "./helpers";
 
 const pageBrowseParams = {
@@ -102,6 +103,15 @@ export function registerPageTools(server: McpServer) {
     runTool(async () => {
       await ghostApiClient.pages.delete(args);
       return `Page with id ${args.id} deleted.`;
+    })
+  );
+
+  // Copy is a documented endpoint not exposed by @tryghost/admin-api:
+  // POST /pages/{id}/copy/ creates a draft duplicate.
+  server.tool("pages_copy", { id: z.string() }, async (args) =>
+    runTool(async () => {
+      const data = await adminApiRequest("pages", { method: "POST", id: args.id, action: "copy" });
+      return data.pages?.[0] ?? data;
     })
   );
 }

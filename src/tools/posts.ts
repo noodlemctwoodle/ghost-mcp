@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
+import { adminApiRequest } from "../ghostAdminClient";
 import { runTool, browseParams, selectionParams, formatsParam } from "./helpers";
 
 // Browse accepts the standard list controls plus content-format selection.
@@ -103,6 +104,15 @@ export function registerPostTools(server: McpServer) {
     runTool(async () => {
       await ghostApiClient.posts.delete(args);
       return `Post with id ${args.id} deleted.`;
+    })
+  );
+
+  // Copy is a documented endpoint not exposed by @tryghost/admin-api:
+  // POST /posts/{id}/copy/ creates a draft duplicate.
+  server.tool("posts_copy", { id: z.string() }, async (args) =>
+    runTool(async () => {
+      const data = await adminApiRequest("posts", { method: "POST", id: args.id, action: "copy" });
+      return data.posts?.[0] ?? data;
     })
   );
 }

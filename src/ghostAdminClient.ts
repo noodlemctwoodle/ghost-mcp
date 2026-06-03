@@ -52,6 +52,7 @@ const baseUrl = GHOST_API_URL.replace(/\/+$/, "");
 export interface AdminRequestOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
   id?: string;
+  action?: string;
   body?: Record<string, unknown>;
   params?: Record<string, unknown>;
 }
@@ -63,10 +64,10 @@ export async function adminApiRequest(
   resource: string,
   options: AdminRequestOptions = {}
 ): Promise<any> {
-  const { method = "GET", id, body, params } = options;
-  const url = `${baseUrl}/ghost/api${adminPrefix(GHOST_API_VERSION)}${resource}/${
-    id ? `${encodeURIComponent(id)}/` : ""
-  }`;
+  const { method = "GET", id, action, body, params } = options;
+  const idPart = id ? `${encodeURIComponent(id)}/` : "";
+  const actionPart = action ? `${action}/` : "";
+  const url = `${baseUrl}/ghost/api${adminPrefix(GHOST_API_VERSION)}${resource}/${idPart}${actionPart}`;
 
   try {
     const response = await axios({
