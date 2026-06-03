@@ -2,7 +2,6 @@
 
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { ghostApiClient } from './ghostApi'; // Import the initialized Ghost API client
 import {
     handleUserResource,
     handleMemberResource,
@@ -12,7 +11,22 @@ import {
     handlePostResource,
     handlePageResource,
     handleBlogInfoResource
-} from './resources'; // Import resource handlers
+} from "./resources";
+import { registerPostTools } from "./tools/posts";
+import { registerPageTools } from "./tools/pages";
+import { registerMemberTools } from "./tools/members";
+import { registerUserTools } from "./tools/users";
+import { registerTagTools } from "./tools/tags";
+import { registerTierTools } from "./tools/tiers";
+import { registerOfferTools } from "./tools/offers";
+import { registerNewsletterTools } from "./tools/newsletters";
+import { registerInviteTools } from "./tools/invites";
+import { registerRoleTools } from "./tools/roles";
+import { registerWebhookTools } from "./tools/webhooks";
+import { registerLabelTools } from "./tools/labels";
+import { registerImageTools } from "./tools/images";
+import { registerThemeTools } from "./tools/themes";
+import { registerPrompts } from "./prompts";
 
 // Create an MCP server instance
 const server = new McpServer({
@@ -20,10 +34,10 @@ const server = new McpServer({
     version: "1.0.0", // TODO: Get version from package.json
 }, {
     capabilities: {
-        resources: {}, // Capabilities will be enabled as handlers are registered
+        resources: {},
         tools: {},
         prompts: {},
-        logging: {} // Enable logging capability
+        logging: {}
     }
 });
 
@@ -38,37 +52,22 @@ server.resource("page", new ResourceTemplate("page://{page_id}", { list: undefin
 server.resource("blog-info", "blog://info", handleBlogInfoResource);
 
 // Register tools
-import { registerPostTools } from "./tools/posts";
-import { registerPageTools } from "./tools/pages";
-import { registerMemberTools } from "./tools/members";
 registerPostTools(server);
 registerPageTools(server);
 registerMemberTools(server);
-import { registerUserTools } from "./tools/users";
 registerUserTools(server);
-import { registerTagTools } from "./tools/tags";
 registerTagTools(server);
-import { registerTierTools } from "./tools/tiers";
 registerTierTools(server);
-import { registerOfferTools } from "./tools/offers";
 registerOfferTools(server);
-import { registerNewsletterTools } from "./tools/newsletters";
 registerNewsletterTools(server);
-import { registerInviteTools } from "./tools/invites";
 registerInviteTools(server);
-
-import { registerRoleTools } from "./tools/roles";
 registerRoleTools(server);
-import { registerWebhookTools } from "./tools/webhooks";
 registerWebhookTools(server);
-import { registerLabelTools } from "./tools/labels";
 registerLabelTools(server);
-import { registerImageTools } from "./tools/images";
 registerImageTools(server);
-import { registerThemeTools } from "./tools/themes";
 registerThemeTools(server);
 
-import { registerPrompts } from "./prompts";
+// Register prompts
 registerPrompts(server);
 
 // Set up and connect to the standard I/O transport
@@ -79,7 +78,7 @@ async function startServer() {
 }
 
 // Start the server
-startServer().catch((error: any) => { // Add type annotation for error
+startServer().catch((error: any) => {
     console.error("Fatal error starting server:", error);
     process.exit(1);
 });
