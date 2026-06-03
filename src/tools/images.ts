@@ -15,6 +15,7 @@ const uploadParams = {
     .describe("Absolute path to a local image file on the machine running this server."),
   url: z
     .string()
+    .url()
     .optional()
     .describe("URL of an image to download and upload to Ghost. Use this when you don't have a local file."),
   purpose: z

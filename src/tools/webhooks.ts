@@ -6,7 +6,7 @@ import { runTool } from "./helpers";
 
 const addParams = {
   event: z.string(),
-  target_url: z.string(),
+  target_url: z.string().url(),
   name: z.string().optional(),
   secret: z.string().optional(),
   api_version: z.string().optional(),
@@ -15,7 +15,7 @@ const addParams = {
 const editParams = {
   id: z.string(),
   event: z.string().optional(),
-  target_url: z.string().optional(),
+  target_url: z.string().url().optional(),
   name: z.string().optional(),
   api_version: z.string().optional(),
 };

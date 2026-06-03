@@ -13,7 +13,7 @@ const uploadParams = {
     .string()
     .optional()
     .describe("Absolute path to a local theme .zip on the machine running this server."),
-  url: z.string().optional().describe("URL of a theme .zip to download and upload."),
+  url: z.string().url().optional().describe("URL of a theme .zip to download and upload."),
 };
 const activateParams = {
   name: z.string().describe("Name of the theme to activate (its package/folder name)."),

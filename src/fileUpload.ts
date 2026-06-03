@@ -8,6 +8,7 @@ import { existsSync, writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, extname, basename } from "node:path";
 import { GhostError } from "./ghostError";
+import { assertSafePublicUrl } from "./security";
 
 export interface ResolvedFile {
   path: string;
@@ -23,7 +24,15 @@ export async function resolveUploadFile(filePath?: string, url?: string): Promis
   }
 
   if (url) {
-    const response = await axios.get(url, { responseType: "arraybuffer" });
+    // Guard against SSRF: only public http(s) hosts, no redirects, bounded size/time.
+    await assertSafePublicUrl(url);
+    const response = await axios.get(url, {
+      responseType: "arraybuffer",
+      maxRedirects: 0,
+      timeout: 15000,
+      maxContentLength: 25 * 1024 * 1024,
+      maxBodyLength: 25 * 1024 * 1024,
+    });
     let name = basename(new URL(url).pathname) || "upload";
     if (!extname(name)) {
       name += ".bin";
