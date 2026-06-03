@@ -2,17 +2,12 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
+import { runTool, browseParams, selectionParams } from "./helpers";
 
-// Parameter schemas as ZodRawShape (object literals)
-const browseParams = {
-  filter: z.string().optional(),
-  limit: z.number().optional(),
-  page: z.number().optional(),
-  order: z.string().optional(),
-};
 const readParams = {
   id: z.string().optional(),
   email: z.string().optional(),
+  ...selectionParams,
 };
 const addParams = {
   email: z.string(),
@@ -34,88 +29,26 @@ const deleteParams = {
 };
 
 export function registerMemberTools(server: McpServer) {
-  // Browse members
-  server.tool(
-    "members_browse",
-    browseParams,
-    async (args, _extra) => {
-      const members = await ghostApiClient.members.browse(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(members, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("members_browse", browseParams, async (args) =>
+    runTool(() => ghostApiClient.members.browse(args))
   );
 
-  // Read member
-  server.tool(
-    "members_read",
-    readParams,
-    async (args, _extra) => {
-      const member = await ghostApiClient.members.read(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(member, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("members_read", readParams, async (args) =>
+    runTool(() => ghostApiClient.members.read(args))
   );
 
-  // Add member
-  server.tool(
-    "members_add",
-    addParams,
-    async (args, _extra) => {
-      const member = await ghostApiClient.members.add(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(member, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("members_add", addParams, async (args) =>
+    runTool(() => ghostApiClient.members.add(args))
   );
 
-  // Edit member
-  server.tool(
-    "members_edit",
-    editParams,
-    async (args, _extra) => {
-      const member = await ghostApiClient.members.edit(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(member, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("members_edit", editParams, async (args) =>
+    runTool(() => ghostApiClient.members.edit(args))
   );
 
-  // Delete member
-  server.tool(
-    "members_delete",
-    deleteParams,
-    async (args, _extra) => {
+  server.tool("members_delete", deleteParams, async (args) =>
+    runTool(async () => {
       await ghostApiClient.members.delete(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Member with id ${args.id} deleted.`,
-          },
-        ],
-      };
-    }
+      return `Member with id ${args.id} deleted.`;
+    })
   );
 }

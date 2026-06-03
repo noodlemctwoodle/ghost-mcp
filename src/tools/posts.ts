@@ -2,17 +2,18 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
+import { runTool, browseParams, selectionParams, formatsParam } from "./helpers";
 
-// Parameter schemas as ZodRawShape (object literals)
-const browseParams = {
-  filter: z.string().optional(),
-  limit: z.number().optional(),
-  page: z.number().optional(),
-  order: z.string().optional(),
+// Browse accepts the standard list controls plus content-format selection.
+const postBrowseParams = {
+  ...browseParams,
+  ...formatsParam,
 };
 const readParams = {
   id: z.string().optional(),
   slug: z.string().optional(),
+  ...selectionParams,
+  ...formatsParam,
 };
 // Shared mutable post fields — accepted by both posts_add and posts_edit.
 // Mirrors the Ghost Admin API post resource:
@@ -75,92 +76,33 @@ const deleteParams = {
 };
 
 export function registerPostTools(server: McpServer) {
-  // Browse posts
-  server.tool(
-    "posts_browse",
-    browseParams,
-    async (args, _extra) => {
-      const posts = await ghostApiClient.posts.browse(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(posts, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("posts_browse", postBrowseParams, async (args) =>
+    runTool(() => ghostApiClient.posts.browse(args))
   );
 
-  // Read post
-  server.tool(
-    "posts_read",
-    readParams,
-    async (args, _extra) => {
-      const post = await ghostApiClient.posts.read(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(post, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("posts_read", readParams, async (args) =>
+    runTool(() => ghostApiClient.posts.read(args))
   );
 
-  // Add post
-  server.tool(
-    "posts_add",
-    addParams,
-    async (args, _extra) => {
-      // If html is present, use source: "html" to ensure Ghost uses the html content
+  server.tool("posts_add", addParams, async (args) =>
+    runTool(() => {
+      // source: "html" tells Ghost to import from the html field
       const options = args.html ? { source: "html" } : undefined;
-      const post = await ghostApiClient.posts.add(args, options);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(post, null, 2),
-          },
-        ],
-      };
-    }
+      return ghostApiClient.posts.add(args, options);
+    })
   );
 
-  // Edit post
-  server.tool(
-    "posts_edit",
-    editParams,
-    async (args, _extra) => {
-      // If html is present, use source: "html" to ensure Ghost uses the html content for updates
+  server.tool("posts_edit", editParams, async (args) =>
+    runTool(() => {
       const options = args.html ? { source: "html" } : undefined;
-      const post = await ghostApiClient.posts.edit(args, options);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(post, null, 2),
-          },
-        ],
-      };
-    }
+      return ghostApiClient.posts.edit(args, options);
+    })
   );
 
-  // Delete post
-  server.tool(
-    "posts_delete",
-    deleteParams,
-    async (args, _extra) => {
+  server.tool("posts_delete", deleteParams, async (args) =>
+    runTool(async () => {
       await ghostApiClient.posts.delete(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Post with id ${args.id} deleted.`,
-          },
-        ],
-      };
-    }
+      return `Post with id ${args.id} deleted.`;
+    })
   );
 }

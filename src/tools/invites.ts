@@ -1,17 +1,14 @@
 // src/tools/invites.ts
+// Invites are not exposed by @tryghost/admin-api, so these go through the direct
+// Admin API client. Invites support browse, add and delete.
+
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ghostApiClient } from "../ghostApi";
+import { adminApiRequest } from "../ghostAdminClient";
+import { runTool, browseParams } from "./helpers";
 
-// Parameter schemas as ZodRawShape (object literals)
-const browseParams = {
-  filter: z.string().optional(),
-  limit: z.number().optional(),
-  page: z.number().optional(),
-  order: z.string().optional(),
-};
 const addParams = {
-  role_id: z.string(),
+  role_id: z.string().describe("ID of the role to invite the user as (see roles_browse)."),
   email: z.string(),
 };
 const deleteParams = {
@@ -19,54 +16,18 @@ const deleteParams = {
 };
 
 export function registerInviteTools(server: McpServer) {
-  // Browse invites
-  server.tool(
-    "invites_browse",
-    browseParams,
-    async (args, _extra) => {
-      const invites = await ghostApiClient.invites.browse(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(invites, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("invites_browse", browseParams, async (args) =>
+    runTool(() => adminApiRequest("invites", { params: args }))
   );
 
-  // Add invite
-  server.tool(
-    "invites_add",
-    addParams,
-    async (args, _extra) => {
-      const invite = await ghostApiClient.invites.add(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(invite, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("invites_add", addParams, async (args) =>
+    runTool(() => adminApiRequest("invites", { method: "POST", body: args }))
   );
 
-  // Delete invite
-  server.tool(
-    "invites_delete",
-    deleteParams,
-    async (args, _extra) => {
-      await ghostApiClient.invites.delete(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Invite with id ${args.id} deleted.`,
-          },
-        ],
-      };
-    }
+  server.tool("invites_delete", deleteParams, async (args) =>
+    runTool(async () => {
+      await adminApiRequest("invites", { method: "DELETE", id: args.id });
+      return `Invite with id ${args.id} deleted.`;
+    })
   );
 }
