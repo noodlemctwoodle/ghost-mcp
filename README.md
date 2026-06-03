@@ -10,6 +10,8 @@ A Model Context Protocol (MCP) server for interacting with Ghost CMS through LLM
 - Complete coverage of the **documented** Admin API surface — including resources the official client does not expose (tiers, offers, roles, invites, labels) via a small direct API client
 - Response trimming: `fields`, `formats` and `include` parameters on browse/read tools to keep payloads small
 - Consistent error handling: failures are returned as a clean `GhostError` message instead of crashing the tool call
+- Responses validated against lenient zod schemas (preserves Ghost's full field set; catches malformed responses)
+- Hardened remote-URL uploads: an SSRF guard rejects private/internal/metadata hosts, with no redirects and size/timeout limits
 - Ghost v5 and v6 supported
 
 ## Requirements
@@ -92,7 +94,7 @@ Tools cover the Ghost Admin API operations exposed by `@tryghost/admin-api`, plu
 
 Notes:
 - **Tiers & offers have no delete tool**: Ghost archives them rather than deleting — set `active: false` (tiers) or `status: "archived"` (offers) via the `_edit` tool.
-- **Uploads**: `images_upload` and `themes_upload` accept either a local `file_path` or a `url` (downloaded server-side, then uploaded).
+- **Uploads**: `images_upload` and `themes_upload` accept either a local `file_path` or a `url`. Remote URLs are fetched server-side behind an SSRF guard (only public http(s) hosts — private, loopback, link-local and cloud-metadata addresses are refused), with no redirects, a 15s timeout and a 25 MB cap. A local `file_path` reads a file on the machine running the server (Ghost validates the content server-side).
 - **Copy**: `posts_copy` / `pages_copy` create a draft duplicate.
 
 ### Keeping responses small
@@ -105,14 +107,21 @@ Single entities can also be read as MCP resources:
 
 `user://{id}`, `member://{id}`, `tier://{id}`, `offer://{id}`, `newsletter://{id}`, `post://{id}`, `page://{id}`, and `blog://info` (site details).
 
+## Prompts
+
+The server also exposes one MCP prompt:
+
+- **`summarize-post`** — given a `postId`, fetches the post and returns a ready-to-send "summarise this post" message.
+
 ## Architecture
 
 - **`@tryghost/admin-api`** handles auth, posts/pages/tags/members/users/newsletters/webhooks and image/theme uploads.
 - A small **direct Admin API client** (`src/ghostAdminClient.ts`) covers the documented endpoints the official package omits — tiers, offers, roles, invites, labels, and the post/page `copy` action — using the same JWT scheme.
+- Response **validation** lives in `src/schemas.ts`; the upload **SSRF guard** lives in `src/security.ts`.
 
 ## Error Handling
 
-API and network failures are normalised by `GhostError` (`src/ghostError.ts`) into a clear message and returned as an MCP error result, so a failed call surfaces a readable reason rather than crashing.
+API and network failures are normalised by `GhostError` (`src/ghostError.ts`) into a clear message and returned as an MCP error result, so a failed call surfaces a readable reason rather than crashing. Responses are validated against lenient zod schemas (`src/schemas.ts`), so a genuinely malformed response is reported rather than passed through silently.
 
 ## Contributing
 
