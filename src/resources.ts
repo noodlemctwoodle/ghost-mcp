@@ -1,11 +1,22 @@
 // src/resources.ts
-// Resource handlers fetch a single entity by id and return it as JSON. Tiers and
-// offers are not exposed by @tryghost/admin-api, so they use the direct Admin
-// API client; everything else uses the official client.
+// Resource handlers fetch a single entity by id and return it as validated JSON.
+// Tiers and offers are not exposed by @tryghost/admin-api, so they use the direct
+// Admin API client; everything else uses the official client.
 
 import { ghostApiClient } from "./ghostApi";
 import { adminApiRequest } from "./ghostAdminClient";
 import { toGhostError } from "./ghostError";
+import {
+  validateEntity,
+  postSchema,
+  pageSchema,
+  memberSchema,
+  userSchema,
+  newsletterSchema,
+  tierSchema,
+  offerSchema,
+  siteSchema,
+} from "./schemas";
 
 // Type definitions compatible with MCP SDK resource handler expectations
 type Variables = Record<string, string | string[]>;
@@ -30,7 +41,7 @@ export const handleUserResource: ReadResourceTemplateCallback = async (uri, vari
   }
   try {
     const user = await ghostApiClient.users.read({ id: userId });
-    return jsonContents(uri, user);
+    return jsonContents(uri, validateEntity(userSchema, user));
   } catch (error) {
     throw toGhostError(error);
   }
@@ -43,7 +54,7 @@ export const handleMemberResource: ReadResourceTemplateCallback = async (uri, va
   }
   try {
     const member = await ghostApiClient.members.read({ id: memberId });
-    return jsonContents(uri, member);
+    return jsonContents(uri, validateEntity(memberSchema, member));
   } catch (error) {
     throw toGhostError(error);
   }
@@ -56,7 +67,7 @@ export const handleTierResource: ReadResourceTemplateCallback = async (uri, vari
   }
   try {
     const data = await adminApiRequest("tiers", { id: tierId });
-    return jsonContents(uri, data.tiers?.[0] ?? data);
+    return jsonContents(uri, validateEntity(tierSchema, data.tiers?.[0] ?? data));
   } catch (error) {
     throw toGhostError(error);
   }
@@ -69,7 +80,7 @@ export const handleOfferResource: ReadResourceTemplateCallback = async (uri, var
   }
   try {
     const data = await adminApiRequest("offers", { id: offerId });
-    return jsonContents(uri, data.offers?.[0] ?? data);
+    return jsonContents(uri, validateEntity(offerSchema, data.offers?.[0] ?? data));
   } catch (error) {
     throw toGhostError(error);
   }
@@ -82,7 +93,7 @@ export const handleNewsletterResource: ReadResourceTemplateCallback = async (uri
   }
   try {
     const newsletter = await ghostApiClient.newsletters.read({ id: newsletterId });
-    return jsonContents(uri, newsletter);
+    return jsonContents(uri, validateEntity(newsletterSchema, newsletter));
   } catch (error) {
     throw toGhostError(error);
   }
@@ -96,7 +107,7 @@ export const handlePostResource: ReadResourceTemplateCallback = async (uri, vari
   try {
     // Request html only to avoid returning the large mobiledoc + lexical payloads.
     const post = await ghostApiClient.posts.read({ id: postId, formats: "html" });
-    return jsonContents(uri, post);
+    return jsonContents(uri, validateEntity(postSchema, post));
   } catch (error) {
     throw toGhostError(error);
   }
@@ -110,7 +121,7 @@ export const handlePageResource: ReadResourceTemplateCallback = async (uri, vari
   try {
     // Request html only to avoid returning the large mobiledoc + lexical payloads.
     const page = await ghostApiClient.pages.read({ id: pageId, formats: "html" });
-    return jsonContents(uri, page);
+    return jsonContents(uri, validateEntity(pageSchema, page));
   } catch (error) {
     throw toGhostError(error);
   }
@@ -119,7 +130,7 @@ export const handlePageResource: ReadResourceTemplateCallback = async (uri, vari
 export async function handleBlogInfoResource(uri: URL): Promise<any> {
   try {
     const site = await ghostApiClient.site.read();
-    return jsonContents(uri, site);
+    return jsonContents(uri, validateEntity(siteSchema, site));
   } catch (error) {
     throw toGhostError(error);
   }
