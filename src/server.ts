@@ -28,10 +28,15 @@ import { registerImageTools } from "./tools/images";
 import { registerThemeTools } from "./tools/themes";
 import { registerPrompts } from "./prompts";
 
+// Read the version from package.json so it stays in sync with releases.
+// require() resolves relative to the compiled file, which sits alongside
+// package.json in both the dev build and the published package.
+const { version } = require("../package.json");
+
 // Create an MCP server instance
 const server = new McpServer({
     name: "ghost-mcp-ts",
-    version: "1.0.0", // TODO: Get version from package.json
+    version,
 }, {
     capabilities: {
         resources: {},
