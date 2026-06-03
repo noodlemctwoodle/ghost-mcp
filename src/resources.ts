@@ -102,6 +102,20 @@ export const handlePostResource: ReadResourceTemplateCallback = async (uri, vari
   }
 };
 
+export const handlePageResource: ReadResourceTemplateCallback = async (uri, variables) => {
+  const pageId = variables.page_id as string;
+  if (!pageId) {
+    throw new Error("Missing page_id parameter");
+  }
+  try {
+    // Request html only to avoid returning the large mobiledoc + lexical payloads.
+    const page = await ghostApiClient.pages.read({ id: pageId, formats: "html" });
+    return jsonContents(uri, page);
+  } catch (error) {
+    throw toGhostError(error);
+  }
+};
+
 export async function handleBlogInfoResource(uri: URL): Promise<any> {
   try {
     const site = await ghostApiClient.site.read();
