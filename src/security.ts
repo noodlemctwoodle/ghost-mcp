@@ -30,8 +30,9 @@ export function isPrivateAddress(ip: string): boolean {
   const ip6 = ip.toLowerCase();
   if (ip6 === "::1" || ip6 === "::") return true; // loopback / unspecified
   if (ip6.startsWith("::ffff:")) return isPrivateAddress(ip6.slice(7)); // IPv4-mapped
-  if (ip6.startsWith("fc") || ip6.startsWith("fd")) return true; // unique local
-  if (ip6.startsWith("fe80")) return true; // link-local
+  if (ip6.startsWith("fc") || ip6.startsWith("fd")) return true; // unique local (fc00::/7)
+  if (ip6.startsWith("fe8") || ip6.startsWith("fe9") || ip6.startsWith("fea") || ip6.startsWith("feb")) return true; // link-local (fe80::/10)
+  if (ip6.startsWith("ff")) return true; // multicast / reserved (ff00::/8)
   return false;
 }
 
@@ -83,8 +84,15 @@ export async function assertSafePublicUrl(rawUrl: string): Promise<void> {
 export function guardedLookup(hostname: string, options: any, callback: any): void {
   lookupCb(hostname, options, (err: any, address: any, family: any) => {
     if (err) return callback(err);
-    if (typeof address === "string" && isPrivateAddress(address)) {
-      return callback(new GhostError(`Refusing to connect to a private address for ${hostname}.`));
+    // dns.lookup yields a string normally, or an array of { address } when called
+    // with { all: true } — validate every resolved address either way.
+    const candidates = Array.isArray(address)
+      ? address.map((a: any) => (a && typeof a === "object" ? a.address : a))
+      : [address];
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && isPrivateAddress(candidate)) {
+        return callback(new GhostError(`Refusing to connect to a private address for ${hostname}.`));
+      }
     }
     callback(null, address, family);
   });

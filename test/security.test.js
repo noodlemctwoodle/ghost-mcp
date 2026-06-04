@@ -15,6 +15,11 @@ test("guardedLookup allows a public IP literal", async () => {
   assert.equal(await lookup("8.8.8.8", {}), "8.8.8.8");
 });
 
+test("guardedLookup validates every address in the { all: true } array form", async () => {
+  // localhost resolves locally to a loopback address; the array form must be rejected too
+  await assert.rejects(() => lookup("localhost", { all: true, family: 4 }));
+});
+
 test("isPrivateAddress blocks private/loopback/link-local/CGNAT/metadata/multicast IPv4", () => {
   for (const ip of [
     "0.0.0.0", "10.0.0.1", "127.0.0.1", "169.254.0.1", "169.254.169.254",
@@ -32,7 +37,7 @@ test("isPrivateAddress allows genuinely public IPv4 (incl. range boundaries)", (
 });
 
 test("isPrivateAddress handles IPv6 loopback/ULA/link-local + IPv4-mapped", () => {
-  for (const ip of ["::1", "::", "fc00::1", "fd12::34", "fe80::1", "::ffff:127.0.0.1", "::ffff:10.0.0.1"]) {
+  for (const ip of ["::1", "::", "fc00::1", "fd12::34", "fe80::1", "fea0::1", "ff02::1", "ff00::1", "::ffff:127.0.0.1", "::ffff:10.0.0.1"]) {
     assert.equal(isPrivateAddress(ip), true, `${ip} should be private`);
   }
   for (const ip of ["2606:4700:4700::1111", "2001:4860:4860::8888", "::ffff:8.8.8.8"]) {

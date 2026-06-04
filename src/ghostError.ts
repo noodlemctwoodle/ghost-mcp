@@ -53,7 +53,7 @@ export function toGhostError(error: unknown): GhostError {
 
   if (status === 401 || status === 403) {
     return new GhostError(
-      "Authentication failed — check GHOST_ADMIN_API_KEY (it must be the Admin API key in {id}:{secret} form, not the Content API key) and that the integration has access.",
+      `Request was not authorised (HTTP ${status}). Check GHOST_ADMIN_API_KEY is the Admin API key in {id}:{secret} form (not the Content API key). Note: staff-only operations (users_edit/delete, invites_browse/delete) require GHOST_STAFF_TOKEN — a Custom Integration key returns 403 for those.`,
       { statusCode: status }
     );
   }

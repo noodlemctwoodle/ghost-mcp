@@ -5,9 +5,9 @@ export const GHOST_API_URL: string = (process.env.GHOST_API_URL ?? "").replace(/
 export const GHOST_ADMIN_API_KEY: string = process.env.GHOST_ADMIN_API_KEY as string;
 export const GHOST_API_VERSION: string = process.env.GHOST_API_VERSION as string || 'v5.0'; // Default to v5.0
 
-// Optional Staff Access Token. When set, the staff-management tools (users_edit,
-// users_delete, invites_browse, invites_add, invites_delete) authenticate with
-// it — a Custom Integration key cannot perform those operations.
+// Optional Staff Access Token. When set, the staff-gated tools (users_edit,
+// users_delete, invites_browse, invites_delete) authenticate with it — a Custom
+// Integration key gets 403 for those. (invites_add works with the primary key.)
 export const GHOST_STAFF_TOKEN: string | undefined = process.env.GHOST_STAFF_TOKEN || undefined;
 
 // Basic validation to ensure required environment variables are set

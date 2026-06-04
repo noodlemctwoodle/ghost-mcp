@@ -13,9 +13,11 @@ test("toGhostError maps a Ghost API error envelope to message + status + context
   assert.equal(e.context, "title");
 });
 
-test("toGhostError maps 401/403 to an auth-failure message", () => {
-  assert.match(toGhostError({ response: { status: 401 } }).message, /Authentication failed/);
-  assert.match(toGhostError({ statusCode: 403 }).message, /Authentication failed/);
+test("toGhostError maps 401/403 to an auth/permission message mentioning both tokens", () => {
+  assert.match(toGhostError({ response: { status: 401 } }).message, /not authorised/);
+  const m403 = toGhostError({ statusCode: 403 }).message;
+  assert.match(m403, /GHOST_ADMIN_API_KEY/);
+  assert.match(m403, /GHOST_STAFF_TOKEN/);
 });
 
 test("toGhostError maps 404 to a not-found message", () => {
