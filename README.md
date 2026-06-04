@@ -173,6 +173,15 @@ The server also exposes one MCP prompt:
 
 API and network failures are normalised by `GhostError` (`src/ghostError.ts`) into a clear message and returned as an MCP error result, so a failed call surfaces a readable reason rather than crashing. Responses are validated against lenient zod schemas (`src/schemas.ts`), so a genuinely malformed response is reported rather than passed through silently.
 
+## Security
+
+This server holds Admin API credentials and acts on your live Ghost site, so it is built to fail safe:
+
+- **Least-privilege tokens (gating).** Use the scoped **Custom Integration** key as the primary (`GHOST_ADMIN_API_KEY`) — it cannot touch staff. Only add a **Staff Access Token** (`GHOST_STAFF_TOKEN`) if you need the four [staff endpoints](#staff-endpoints): it authenticates *as that staff user with all of their permissions* (an Administrator token is effectively full-admin), so treat it like a password and weigh the access carefully before handing it to an LLM-driven client. Each call is routed to the correct token, and a key that lacks a permission gets a clean **403** — the server never silently escalates.
+- **SSRF guard on uploads.** When you pass a remote `url` to `images_upload` or `themes_upload`, the URL is validated *before* any fetch (`src/security.ts`): only `http`/`https` schemes are allowed; `localhost`, `*.localhost` and `*.internal` hosts are refused; and the hostname is DNS-resolved with **every** resolved address checked against private, loopback, link-local, CGNAT, cloud-metadata (`169.254.169.254`), IPv6 unique-local and multicast/reserved ranges (IPv4, IPv6 and IPv4-mapped IPv6). The download then allows **no redirects**, times out after **15s**, and is capped at **25 MB**. This stops the model from steering the server into internal infrastructure. *(This is SSRF — server-side request forgery — not CSRF: the server runs over stdio with no browser, cookies or session.)*
+- **Response validation.** Responses are checked against lenient zod schemas (`src/schemas.ts`), so a malformed payload is reported rather than passed through silently.
+- **Secrets & local files.** Credentials are read only from environment variables and are not echoed into error messages or tool output. A local `file_path` upload reads from the filesystem of the machine running the server, so run it only where you trust the inputs.
+
 ## Contributing
 
 1. Fork the repository
