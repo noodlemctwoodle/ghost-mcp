@@ -2,7 +2,18 @@
 // so no DNS or network is required — safe to run in CI.
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { isPrivateAddress, assertSafePublicUrl } = require("../build/security.js");
+const { isPrivateAddress, assertSafePublicUrl, guardedLookup } = require("../build/security.js");
+
+const lookup = (host, opts) => new Promise((resolve, reject) => guardedLookup(host, opts, (e, a) => (e ? reject(e) : resolve(a))));
+
+test("guardedLookup rejects a host that resolves to a private address (DNS-rebinding guard)", async () => {
+  // localhost resolves to a loopback address — must be refused at connect time
+  await assert.rejects(() => lookup("localhost", { family: 4 }));
+});
+
+test("guardedLookup allows a public IP literal", async () => {
+  assert.equal(await lookup("8.8.8.8", {}), "8.8.8.8");
+});
 
 test("isPrivateAddress blocks private/loopback/link-local/CGNAT/metadata/multicast IPv4", () => {
   for (const ip of [

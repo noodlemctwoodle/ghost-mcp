@@ -6,7 +6,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { adminApiRequest } from "../ghostAdminClient";
-import { validateSelectable, validateEnvelope, offerSchema } from "../schemas";
+import { validateSelectable, validateEnvelope, validateWriteEnvelope, offerSchema } from "../schemas";
 import { runTool, browseParams, selectionParams } from "./helpers";
 
 const readParams = {
@@ -55,13 +55,13 @@ export function registerOfferTools(server: McpServer) {
   );
 
   server.tool("offers_add", addParams, async (args) =>
-    runTool(async () => validateEnvelope(offerSchema, await adminApiRequest("offers", { method: "POST", body: buildOfferBody(args) }), "offers"))
+    runTool(async () => validateWriteEnvelope(offerSchema, await adminApiRequest("offers", { method: "POST", body: buildOfferBody(args) }), "offers"))
   );
 
   server.tool("offers_edit", editParams, async (args) =>
     runTool(async () => {
       const { id, ...body } = args;
-      return validateEnvelope(offerSchema, await adminApiRequest("offers", { method: "PUT", id, body }), "offers");
+      return validateWriteEnvelope(offerSchema, await adminApiRequest("offers", { method: "PUT", id, body }), "offers");
     })
   );
 }

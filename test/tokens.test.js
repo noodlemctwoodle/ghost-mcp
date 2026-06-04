@@ -42,3 +42,8 @@ test("generateToken produces a valid HS256 JWT with correct header, claims and s
     .digest("base64url");
   assert.equal(s, expectedSig, "signature must be HMAC-SHA256 over the hex-decoded secret");
 });
+
+test("generateToken rejects a malformed key with a clear message", () => {
+  assert.throws(() => generateToken("notavalidkey"), /Invalid Admin API key/);
+  assert.throws(() => generateToken("aaaaaaaaaaaaaaaaaaaaaaaa:nothex!!!"), /Invalid Admin API key/);
+});

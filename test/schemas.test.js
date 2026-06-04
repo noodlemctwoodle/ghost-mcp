@@ -35,6 +35,19 @@ test("validateEnvelope validates the inner array, returns the envelope, rejects 
   assert.throws(() => S.validateEnvelope(S.tierSchema, { tiers: [123] }, "tiers"));
 });
 
+test("validateEnvelope fails fast when the key is missing or not an array", () => {
+  assert.throws(() => S.validateEnvelope(S.tierSchema, { meta: {} }, "tiers"));
+  assert.throws(() => S.validateEnvelope(S.tierSchema, { tiers: "nope" }, "tiers"));
+});
+
+test("validateWriteEnvelope strictly validates the written entity (id required)", () => {
+  const env = { tiers: [{ id: "t1", name: "Gold" }] };
+  assert.equal(S.validateWriteEnvelope(S.tierSchema, env, "tiers"), env);
+  assert.throws(() => S.validateWriteEnvelope(S.tierSchema, { tiers: [{ name: "no id" }] }, "tiers"));
+  assert.throws(() => S.validateWriteEnvelope(S.tierSchema, { tiers: [] }, "tiers"));
+  assert.throws(() => S.validateWriteEnvelope(S.tierSchema, { meta: {} }, "tiers"));
+});
+
 test("imageSchema requires url; themeSchema requires name", () => {
   assert.throws(() => S.validateEntity(S.imageSchema, { ref: "x" }));
   assert.doesNotThrow(() => S.validateEntity(S.imageSchema, { url: "https://x/y.png" }));

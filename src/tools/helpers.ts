@@ -19,7 +19,9 @@ export async function runTool(
 ): Promise<TextToolResult> {
   try {
     const result = await exec();
-    const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
+    // `result ?? null` guards a tool returning undefined — JSON.stringify(undefined)
+    // is undefined (not a string), which would be an invalid MCP text result.
+    const text = typeof result === "string" ? result : JSON.stringify(result ?? null, null, 2);
     return { content: [{ type: "text", text }] };
   } catch (error) {
     return { content: [{ type: "text", text: formatGhostError(error) }], isError: true };

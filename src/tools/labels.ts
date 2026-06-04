@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { adminApiRequest } from "../ghostAdminClient";
-import { validateSelectable, validateEnvelope, labelSchema } from "../schemas";
+import { validateSelectable, validateEnvelope, validateWriteEnvelope, labelSchema } from "../schemas";
 import { runTool, browseParams, selectionParams } from "./helpers";
 
 const readParams = {
@@ -39,13 +39,13 @@ export function registerLabelTools(server: McpServer) {
   );
 
   server.tool("labels_add", addParams, async (args) =>
-    runTool(async () => validateEnvelope(labelSchema, await adminApiRequest("labels", { method: "POST", body: args }), "labels"))
+    runTool(async () => validateWriteEnvelope(labelSchema, await adminApiRequest("labels", { method: "POST", body: args }), "labels"))
   );
 
   server.tool("labels_edit", editParams, async (args) =>
     runTool(async () => {
       const { id, ...body } = args;
-      return validateEnvelope(labelSchema, await adminApiRequest("labels", { method: "PUT", id, body }), "labels");
+      return validateWriteEnvelope(labelSchema, await adminApiRequest("labels", { method: "PUT", id, body }), "labels");
     })
   );
 

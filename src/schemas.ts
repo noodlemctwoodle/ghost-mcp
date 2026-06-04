@@ -163,12 +163,29 @@ export function validateSelectableList(schema: z.ZodObject<any>, data: unknown):
   return data;
 }
 
-// Validate the entity array inside a Ghost envelope ({ <key>: [...], meta }) and
-// return the envelope unchanged, preserving pagination meta.
+// Validate the entity array inside a Ghost browse envelope ({ <key>: [...], meta })
+// and return the envelope unchanged, preserving pagination meta. Field-tolerant on
+// the items (browse may use a `fields` selector), but fails fast if the key is
+// missing or not an array — that signals a response-shape mismatch.
 export function validateEnvelope(schema: z.ZodObject<any>, data: unknown, key: string): unknown {
   const env = data as Record<string, unknown> | null;
-  if (env && typeof env === "object" && Array.isArray(env[key])) {
-    validateSelectableList(schema, env[key]);
+  if (!env || typeof env !== "object" || !Array.isArray(env[key])) {
+    throw new GhostError(`Unexpected Ghost response shape — expected "${key}" to be an array.`);
   }
+  validateSelectableList(schema, env[key]);
+  return data;
+}
+
+// Strict validation of a write-response envelope ({ <key>: [entity] }): the
+// created/updated entity must be fully formed (id required). Used by add/edit,
+// where no `fields` selector applies — so a missing id means a malformed response,
+// not a trimmed one.
+export function validateWriteEnvelope(schema: z.ZodObject<any>, data: unknown, key: string): unknown {
+  const env = data as Record<string, unknown> | null;
+  const arr = env && typeof env === "object" ? env[key] : undefined;
+  if (!Array.isArray(arr) || arr.length === 0) {
+    throw new GhostError(`Unexpected Ghost response shape — expected "${key}" to contain the written entity.`);
+  }
+  for (const item of arr) validateEntity(schema, item);
   return data;
 }

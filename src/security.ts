@@ -5,7 +5,10 @@
 // metadata, etc.) before fetching.
 
 import { lookup } from "node:dns/promises";
+import { lookup as lookupCb } from "node:dns";
 import { isIP } from "node:net";
+import { Agent as HttpAgent } from "node:http";
+import { Agent as HttpsAgent } from "node:https";
 import { GhostError } from "./ghostError";
 
 // True if an IP literal falls in a private, loopback, link-local or otherwise
@@ -69,4 +72,29 @@ export async function assertSafePublicUrl(rawUrl: string): Promise<void> {
       );
     }
   }
+}
+
+// A DNS lookup that validates the resolved address at connection time and refuses
+// private/internal IPs. assertSafePublicUrl pre-checks the URL, but the eventual
+// fetch resolves DNS again — leaving a rebinding window (the host resolves to a
+// public IP during validation, then to a private one at connect). Using this as
+// the connecting agent's lookup closes the window: the very resolution the socket
+// connects to is the one that is validated.
+export function guardedLookup(hostname: string, options: any, callback: any): void {
+  lookupCb(hostname, options, (err: any, address: any, family: any) => {
+    if (err) return callback(err);
+    if (typeof address === "string" && isPrivateAddress(address)) {
+      return callback(new GhostError(`Refusing to connect to a private address for ${hostname}.`));
+    }
+    callback(null, address, family);
+  });
+}
+
+// http(s) agents whose connections only resolve to public addresses. Pass these
+// to any axios request that fetches a model-supplied URL.
+export function guardedAgents(): { httpAgent: HttpAgent; httpsAgent: HttpsAgent } {
+  return {
+    httpAgent: new HttpAgent({ lookup: guardedLookup as any }),
+    httpsAgent: new HttpsAgent({ lookup: guardedLookup as any }),
+  };
 }

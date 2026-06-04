@@ -1,12 +1,13 @@
 // src/tools/invites.ts
 // Invites are not exposed by @tryghost/admin-api, so these go through the direct
-// Admin API client. They are staff-management operations, so they sign with the
-// optional Staff Access Token (staff: true) — a Custom Integration key gets 403.
+// Admin API client. Browse and delete are staff-gated — they sign with the optional
+// Staff Access Token (staff: true), and a Custom Integration key gets 403. Creating
+// an invite works with the Custom Integration key, so invites_add uses the primary.
 
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { adminApiRequest } from "../ghostAdminClient";
-import { validateEnvelope, inviteSchema } from "../schemas";
+import { validateEnvelope, validateWriteEnvelope, inviteSchema } from "../schemas";
 import { runTool, browseParams } from "./helpers";
 
 const addParams = {
@@ -23,7 +24,7 @@ export function registerInviteTools(server: McpServer) {
   );
 
   server.tool("invites_add", addParams, async (args) =>
-    runTool(async () => validateEnvelope(inviteSchema, await adminApiRequest("invites", { method: "POST", body: args, staff: true }), "invites"))
+    runTool(async () => validateWriteEnvelope(inviteSchema, await adminApiRequest("invites", { method: "POST", body: args }), "invites"))
   );
 
   server.tool("invites_delete", deleteParams, async (args) =>

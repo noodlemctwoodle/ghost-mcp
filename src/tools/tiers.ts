@@ -6,7 +6,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { adminApiRequest } from "../ghostAdminClient";
-import { validateSelectable, validateEnvelope, tierSchema } from "../schemas";
+import { validateSelectable, validateEnvelope, validateWriteEnvelope, tierSchema } from "../schemas";
 import { runTool, browseParams, selectionParams } from "./helpers";
 
 const readParams = {
@@ -47,13 +47,13 @@ export function registerTierTools(server: McpServer) {
   );
 
   server.tool("tiers_add", addParams, async (args) =>
-    runTool(async () => validateEnvelope(tierSchema, await adminApiRequest("tiers", { method: "POST", body: args }), "tiers"))
+    runTool(async () => validateWriteEnvelope(tierSchema, await adminApiRequest("tiers", { method: "POST", body: args }), "tiers"))
   );
 
   server.tool("tiers_edit", editParams, async (args) =>
     runTool(async () => {
       const { id, ...body } = args;
-      return validateEnvelope(tierSchema, await adminApiRequest("tiers", { method: "PUT", id, body }), "tiers");
+      return validateWriteEnvelope(tierSchema, await adminApiRequest("tiers", { method: "PUT", id, body }), "tiers");
     })
   );
 }

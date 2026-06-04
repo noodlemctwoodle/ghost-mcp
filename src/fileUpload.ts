@@ -8,7 +8,7 @@ import { existsSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, extname, basename } from "node:path";
 import { GhostError } from "./ghostError";
-import { assertSafePublicUrl } from "./security";
+import { assertSafePublicUrl, guardedAgents } from "./security";
 
 export interface ResolvedFile {
   path: string;
@@ -33,6 +33,9 @@ export async function resolveUploadFile(filePath?: string, url?: string): Promis
       timeout: 15000,
       maxContentLength: 25 * 1024 * 1024,
       maxBodyLength: 25 * 1024 * 1024,
+      // Validate the resolved IP at connect time too — closes the DNS-rebinding
+      // window between assertSafePublicUrl and the actual fetch.
+      ...guardedAgents(),
     });
     let name = basename(new URL(url).pathname) || "upload";
     if (!extname(name)) {

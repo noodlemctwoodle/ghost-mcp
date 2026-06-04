@@ -11,7 +11,7 @@
 import axios from "axios";
 import { createHmac } from "node:crypto";
 import { GHOST_API_URL, GHOST_ADMIN_API_KEY, GHOST_API_VERSION, GHOST_STAFF_TOKEN } from "./config";
-import { toGhostError } from "./ghostError";
+import { GhostError, toGhostError } from "./ghostError";
 
 // Resolve the Admin API path/audience prefix for a given version string.
 // Only v2–v4/canary carry a version segment; v5+ uses a bare `/admin/`.
@@ -32,6 +32,11 @@ function base64url(input: string): string {
 
 export function generateToken(key: string): string {
   const [id, secret] = key.split(":");
+  if (!id || !secret || !/^[0-9a-fA-F]+$/.test(secret)) {
+    throw new GhostError(
+      "Invalid Admin API key format — expected '{id}:{hex-secret}'. Use the Admin API Key (which contains a colon), not the Content API Key."
+    );
+  }
   const header = base64url(JSON.stringify({ alg: "HS256", typ: "JWT", kid: id }));
   const issuedAt = Math.floor(Date.now() / 1000);
   const payload = base64url(

@@ -2,7 +2,7 @@
 // that keeps post/page write responses from exceeding an MCP client's size limit.
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { summarizeWrite } = require("../build/tools/helpers.js");
+const { summarizeWrite, runTool } = require("../build/tools/helpers.js");
 
 test("summarizeWrite keeps identity/status fields and drops heavy body fields", () => {
   const post = {
@@ -47,4 +47,27 @@ test("summarizeWrite returns non-objects unchanged", () => {
 test("summarizeWrite returns the original object when it has none of the summary fields", () => {
   const odd = { name: "casper", active: true };
   assert.equal(summarizeWrite(odd), odd);
+});
+
+test("runTool wraps a string result as-is", async () => {
+  const r = await runTool(() => "Deleted.");
+  assert.equal(r.content[0].text, "Deleted.");
+  assert.ok(!r.isError);
+});
+
+test("runTool JSON-stringifies an object result", async () => {
+  const r = await runTool(() => ({ id: "x" }));
+  assert.equal(JSON.parse(r.content[0].text).id, "x");
+});
+
+test("runTool returns string text even when a tool returns undefined", async () => {
+  const r = await runTool(() => undefined);
+  assert.equal(typeof r.content[0].text, "string");
+  assert.equal(r.content[0].text, "null");
+});
+
+test("runTool turns a thrown error into a clean isError result", async () => {
+  const r = await runTool(() => { throw new Error("boom"); });
+  assert.equal(r.isError, true);
+  assert.equal(typeof r.content[0].text, "string");
 });
