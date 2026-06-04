@@ -20,7 +20,7 @@ const sharedFields = {
   yearly_price: z.number().optional(),
   currency: z.string().optional(),
   benefits: z.array(z.string()).optional(),
-  active: z.boolean().optional(),
+  active: z.boolean().optional().describe("Set false to archive the tier — Ghost has no tier delete."),
 };
 const addParams = {
   name: z.string(),

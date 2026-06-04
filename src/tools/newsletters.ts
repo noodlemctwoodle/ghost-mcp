@@ -31,7 +31,10 @@ const editParams = {
   sender_name: z.string().optional(),
   sender_email: z.string().optional(),
   sender_reply_to: z.string().optional(),
-  status: z.string().optional(),
+  status: z
+    .string()
+    .optional()
+    .describe("'active' or 'archived'. Set 'archived' to archive the newsletter — Ghost has no hard delete."),
   subscribe_on_signup: z.boolean().optional(),
   sort_order: z.number().optional(),
   header_image: z.string().optional(),
@@ -44,9 +47,6 @@ const editParams = {
   footer_content: z.string().optional(),
   show_badge: z.boolean().optional(),
   show_header_name: z.boolean().optional(),
-};
-const deleteParams = {
-  id: z.string(),
 };
 
 export function registerNewsletterTools(server: McpServer) {
@@ -62,14 +62,9 @@ export function registerNewsletterTools(server: McpServer) {
     runTool(() => ghostApiClient.newsletters.add(args))
   );
 
+  // Ghost has no hard delete for newsletters — archive one by setting
+  // status:"archived" via this tool.
   server.tool("newsletters_edit", editParams, async (args) =>
     runTool(() => ghostApiClient.newsletters.edit(args))
-  );
-
-  server.tool("newsletters_delete", deleteParams, async (args) =>
-    runTool(async () => {
-      await ghostApiClient.newsletters.delete(args);
-      return `Newsletter with id ${args.id} deleted.`;
-    })
   );
 }

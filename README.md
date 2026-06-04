@@ -24,6 +24,15 @@ A **Custom Integration** Admin API key from your Ghost site (Ghost Admin → **S
 | `GHOST_ADMIN_API_KEY` | yes | Admin API key in `{id}:{secret}` form |
 | `GHOST_API_VERSION` | no | Defaults to `v5.0`; `v6.0` also supported |
 
+## Authentication & token types
+
+`GHOST_ADMIN_API_KEY` accepts two kinds of `{id}:{secret}` key. Both use the same JWT auth, but Ghost grants different permissions:
+
+- **Custom Integration key** (Settings → Advanced → Integrations) — a scoped, fixed permission set. Manages content, members, tags, tiers, offers, newsletters, etc. It **cannot manage staff**: `users_edit`, `users_delete`, `invites_browse` and `invites_delete` return **403** with this key. Safer, and recommended for most setups.
+- **Staff Access Token** (from a staff user's profile page) — authenticates *as that user* with their **role's** permissions. An **Administrator/Owner** token enables the staff/invite tools above. It's high-privilege — keep it secret, and for an LLM-driven server weigh the access it grants before using one in production.
+
+`roles_browse`, `users_browse`/`users_read` and `invites_add` work with either key.
+
 ## Usage
 
 ### Run from source (this repository)
@@ -81,12 +90,12 @@ Tools cover the Ghost Admin API operations exposed by `@tryghost/admin-api`, plu
 | **Pages** | `pages_browse`, `pages_read`, `pages_add`, `pages_edit`, `pages_delete`, `pages_copy` |
 | **Tags** | `tags_browse`, `tags_read`, `tags_add`, `tags_edit`, `tags_delete` |
 | **Members** | `members_browse`, `members_read`, `members_add`, `members_edit`, `members_delete` |
-| **Newsletters** | `newsletters_browse`, `newsletters_read`, `newsletters_add`, `newsletters_edit`, `newsletters_delete` |
+| **Newsletters** | `newsletters_browse`, `newsletters_read`, `newsletters_add`, `newsletters_edit` |
 | **Tiers** | `tiers_browse`, `tiers_read`, `tiers_add`, `tiers_edit` |
 | **Offers** | `offers_browse`, `offers_read`, `offers_add`, `offers_edit` |
 | **Labels** | `labels_browse`, `labels_read`, `labels_add`, `labels_edit`, `labels_delete` |
 | **Users** | `users_browse`, `users_read`, `users_edit`, `users_delete` |
-| **Roles** | `roles_browse`, `roles_read` |
+| **Roles** | `roles_browse` |
 | **Invites** | `invites_browse`, `invites_add`, `invites_delete` |
 | **Webhooks** | `webhooks_add`, `webhooks_edit`, `webhooks_delete` |
 | **Images** | `images_upload` |
@@ -94,7 +103,7 @@ Tools cover the Ghost Admin API operations exposed by `@tryghost/admin-api`, plu
 | **Site** | `site_read` |
 
 Notes:
-- **Tiers & offers have no delete tool**: Ghost archives them rather than deleting — set `active: false` (tiers) or `status: "archived"` (offers) via the `_edit` tool.
+- **Archiving instead of deleting**: tiers, offers and newsletters have no delete tool — Ghost archives them. Use the `_edit` tool: `active: false` (tiers), `status: "archived"` (offers and newsletters). Roles are browse-only (no read-by-id).
 - **Uploads**: `images_upload` and `themes_upload` accept either a local `file_path` or a `url`. Remote URLs are fetched server-side behind an SSRF guard (only public http(s) hosts — private, loopback, link-local and cloud-metadata addresses are refused), with no redirects, a 15s timeout and a 25 MB cap. A local `file_path` reads a file on the machine running the server (Ghost validates the content server-side).
 - **Copy**: `posts_copy` / `pages_copy` create a draft duplicate.
 
