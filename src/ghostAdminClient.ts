@@ -15,7 +15,7 @@ import { toGhostError } from "./ghostError";
 
 // Resolve the Admin API path/audience prefix for a given version string.
 // Only v2–v4/canary carry a version segment; v5+ uses a bare `/admin/`.
-function adminPrefix(version: string): string {
+export function adminPrefix(version: string): string {
   if (version === "v2" || version === "v3" || version === "v4" || version === "canary") {
     return `/${version}/admin/`;
   }
@@ -30,7 +30,7 @@ function base64url(input: string): string {
   return Buffer.from(input).toString("base64url");
 }
 
-function generateToken(key: string): string {
+export function generateToken(key: string): string {
   const [id, secret] = key.split(":");
   const header = base64url(JSON.stringify({ alg: "HS256", typ: "JWT", kid: id }));
   const issuedAt = Math.floor(Date.now() / 1000);
