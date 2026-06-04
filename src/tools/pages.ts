@@ -60,6 +60,10 @@ const pageMutableFields = {
   codeinjection_head: z.string().optional(),
   codeinjection_foot: z.string().optional(),
   canonical_url: z.string().optional(),
+  custom_template: z
+    .string()
+    .optional()
+    .describe("Page 'Template' setting — a custom template name supplied by the active theme (e.g. 'custom-landing')."),
   tags: z.array(tagRef).optional(),
   authors: z.array(authorRef).optional(),
 };
