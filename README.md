@@ -79,7 +79,7 @@ Then point your MCP client (e.g. Claude Desktop, `claude_desktop_config.json`) a
         "GHOST_API_URL": "https://yourblog.com",
         "GHOST_ADMIN_API_KEY": "your_integration_admin_api_key",
         "GHOST_STAFF_TOKEN": "your_admin_staff_access_token",
-        "GHOST_API_VERSION": "v5.0"
+        "GHOST_API_VERSION": "v6.0"
       }
     }
   }
@@ -100,7 +100,7 @@ Then point your MCP client (e.g. Claude Desktop, `claude_desktop_config.json`) a
         "GHOST_API_URL": "https://yourblog.com",
         "GHOST_ADMIN_API_KEY": "your_integration_admin_api_key",
         "GHOST_STAFF_TOKEN": "your_admin_staff_access_token",
-        "GHOST_API_VERSION": "v5.0"
+        "GHOST_API_VERSION": "v6.0"
       }
     }
   }
