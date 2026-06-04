@@ -1,0 +1,11 @@
+name: "ghost-mcp CodeQL config"
+
+# Deeper security coverage for the shipped source.
+queries:
+  - uses: security-extended
+
+# Test code is never published (package.json `files` ships only build/), so it is
+# not part of the attack surface — exclude it from analysis to avoid noise such as
+# insecure-temp-file findings in throwaway E2E fixtures.
+paths-ignore:
+  - test

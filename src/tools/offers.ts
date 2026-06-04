@@ -1,32 +1,30 @@
 // src/tools/offers.ts
+// Offers are not exposed by @tryghost/admin-api, so these go through the direct
+// Admin API client. Ghost has no DELETE for offers — archive one with
+// offers_edit (status:"archived") instead.
+
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ghostApiClient } from "../ghostApi";
+import { adminApiRequest } from "../ghostAdminClient";
+import { validateSelectable, validateEnvelope, validateWriteEnvelope, offerSchema } from "../schemas";
+import { runTool, browseParams, selectionParams } from "./helpers";
 
-// Parameter schemas as ZodRawShape (object literals)
-const browseParams = {
-  filter: z.string().optional(),
-  limit: z.number().optional(),
-  page: z.number().optional(),
-  order: z.string().optional(),
-};
 const readParams = {
-  id: z.string().optional(),
-  code: z.string().optional(),
+  id: z.string(),
+  ...selectionParams,
 };
 const addParams = {
   name: z.string(),
   code: z.string(),
-  cadence: z.string(),
-  duration: z.string(),
+  cadence: z.string().describe("'month' or 'year'."),
+  type: z.string().describe("'percent' or 'fixed'."),
   amount: z.number(),
-  tier_id: z.string(),
-  type: z.string(),
-  display_title: z.string().optional(),
-  display_description: z.string().optional(),
+  duration: z.string().describe("'once', 'forever', or 'repeating'."),
+  tier_id: z.string().describe("ID of the tier this offer applies to."),
   duration_in_months: z.number().optional(),
   currency: z.string().optional(),
-  // Add more fields as needed
+  display_title: z.string().optional(),
+  display_description: z.string().optional(),
 };
 const editParams = {
   id: z.string(),
@@ -34,95 +32,36 @@ const editParams = {
   code: z.string().optional(),
   display_title: z.string().optional(),
   display_description: z.string().optional(),
-  // Only a subset of fields are editable per Ghost API docs
+  status: z.string().optional().describe("Set to 'archived' to retire the offer."),
 };
-const deleteParams = {
-  id: z.string(),
-};
+
+// Ghost links an offer to a tier via a nested relation object, not a flat id.
+function buildOfferBody(args: Record<string, any>): Record<string, unknown> {
+  const { tier_id, ...rest } = args;
+  return tier_id ? { ...rest, tier: { id: tier_id } } : { ...rest };
+}
 
 export function registerOfferTools(server: McpServer) {
-  // Browse offers
-  server.tool(
-    "offers_browse",
-    browseParams,
-    async (args, _extra) => {
-      const offers = await ghostApiClient.offers.browse(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(offers, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("offers_browse", browseParams, async (args) =>
+    runTool(async () => validateEnvelope(offerSchema, await adminApiRequest("offers", { params: args }), "offers"))
   );
 
-  // Read offer
-  server.tool(
-    "offers_read",
-    readParams,
-    async (args, _extra) => {
-      const offer = await ghostApiClient.offers.read(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(offer, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("offers_read", readParams, async (args) =>
+    runTool(async () => {
+      const { id, ...params } = args;
+      const data = await adminApiRequest("offers", { id, params });
+      return validateSelectable(offerSchema, data.offers?.[0] ?? data);
+    })
   );
 
-  // Add offer
-  server.tool(
-    "offers_add",
-    addParams,
-    async (args, _extra) => {
-      const offer = await ghostApiClient.offers.add(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(offer, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("offers_add", addParams, async (args) =>
+    runTool(async () => validateWriteEnvelope(offerSchema, await adminApiRequest("offers", { method: "POST", body: buildOfferBody(args) }), "offers"))
   );
 
-  // Edit offer
-  server.tool(
-    "offers_edit",
-    editParams,
-    async (args, _extra) => {
-      const offer = await ghostApiClient.offers.edit(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(offer, null, 2),
-          },
-        ],
-      };
-    }
-  );
-
-  // Delete offer
-  server.tool(
-    "offers_delete",
-    deleteParams,
-    async (args, _extra) => {
-      await ghostApiClient.offers.delete(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Offer with id ${args.id} deleted.`,
-          },
-        ],
-      };
-    }
+  server.tool("offers_edit", editParams, async (args) =>
+    runTool(async () => {
+      const { id, ...body } = args;
+      return validateWriteEnvelope(offerSchema, await adminApiRequest("offers", { method: "PUT", id, body }), "offers");
+    })
   );
 }

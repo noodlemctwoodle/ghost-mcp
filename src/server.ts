@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 
+// MUST be the first import: installs credential redaction on stdout/stderr before
+// any other module (Admin API clients, MCP SDK) can produce output.
+import "./bootstrapRedaction";
+
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { ghostApiClient } from './ghostApi'; // Import the initialized Ghost API client
 import {
     handleUserResource,
     handleMemberResource,
@@ -10,19 +13,41 @@ import {
     handleOfferResource,
     handleNewsletterResource,
     handlePostResource,
+    handlePageResource,
     handleBlogInfoResource
-} from './resources'; // Import resource handlers
+} from "./resources";
+import { registerPostTools } from "./tools/posts";
+import { registerPageTools } from "./tools/pages";
+import { registerMemberTools } from "./tools/members";
+import { registerUserTools } from "./tools/users";
+import { registerTagTools } from "./tools/tags";
+import { registerTierTools } from "./tools/tiers";
+import { registerOfferTools } from "./tools/offers";
+import { registerNewsletterTools } from "./tools/newsletters";
+import { registerInviteTools } from "./tools/invites";
+import { registerRoleTools } from "./tools/roles";
+import { registerWebhookTools } from "./tools/webhooks";
+import { registerLabelTools } from "./tools/labels";
+import { registerImageTools } from "./tools/images";
+import { registerThemeTools } from "./tools/themes";
+import { registerSiteTools } from "./tools/site";
+import { registerPrompts } from "./prompts";
+
+// Read the version from package.json so it stays in sync with releases.
+// require() resolves relative to the compiled file, which sits alongside
+// package.json in both the dev build and the published package.
+const { version } = require("../package.json");
 
 // Create an MCP server instance
 const server = new McpServer({
     name: "ghost-mcp-ts",
-    version: "1.0.0", // TODO: Get version from package.json
+    version,
 }, {
     capabilities: {
-        resources: {}, // Capabilities will be enabled as handlers are registered
+        resources: {},
         tools: {},
         prompts: {},
-        logging: {} // Enable logging capability
+        logging: {}
     }
 });
 
@@ -33,32 +58,27 @@ server.resource("tier", new ResourceTemplate("tier://{tier_id}", { list: undefin
 server.resource("offer", new ResourceTemplate("offer://{offer_id}", { list: undefined }), handleOfferResource);
 server.resource("newsletter", new ResourceTemplate("newsletter://{newsletter_id}", { list: undefined }), handleNewsletterResource);
 server.resource("post", new ResourceTemplate("post://{post_id}", { list: undefined }), handlePostResource);
+server.resource("page", new ResourceTemplate("page://{page_id}", { list: undefined }), handlePageResource);
 server.resource("blog-info", "blog://info", handleBlogInfoResource);
 
 // Register tools
-import { registerPostTools } from "./tools/posts";
-import { registerMemberTools } from "./tools/members";
 registerPostTools(server);
+registerPageTools(server);
 registerMemberTools(server);
-import { registerUserTools } from "./tools/users";
 registerUserTools(server);
-import { registerTagTools } from "./tools/tags";
 registerTagTools(server);
-import { registerTierTools } from "./tools/tiers";
 registerTierTools(server);
-import { registerOfferTools } from "./tools/offers";
 registerOfferTools(server);
-import { registerNewsletterTools } from "./tools/newsletters";
 registerNewsletterTools(server);
-import { registerInviteTools } from "./tools/invites";
 registerInviteTools(server);
-
-import { registerRoleTools } from "./tools/roles";
 registerRoleTools(server);
-import { registerWebhookTools } from "./tools/webhooks";
 registerWebhookTools(server);
+registerLabelTools(server);
+registerImageTools(server);
+registerThemeTools(server);
+registerSiteTools(server);
 
-import { registerPrompts } from "./prompts";
+// Register prompts
 registerPrompts(server);
 
 // Set up and connect to the standard I/O transport
@@ -69,7 +89,7 @@ async function startServer() {
 }
 
 // Start the server
-startServer().catch((error: any) => { // Add type annotation for error
+startServer().catch((error: any) => {
     console.error("Fatal error starting server:", error);
     process.exit(1);
 });

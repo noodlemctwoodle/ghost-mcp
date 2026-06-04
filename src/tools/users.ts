@@ -1,19 +1,15 @@
 // src/tools/users.ts
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ghostApiClient } from "../ghostApi";
+import { ghostApiClient, ghostStaffClient } from "../ghostApi";
+import { validateEntity, validateSelectable, validateSelectableList, userSchema } from "../schemas";
+import { runTool, browseParams, selectionParams } from "./helpers";
 
-// Parameter schemas as ZodRawShape (object literals)
-const browseParams = {
-  filter: z.string().optional(),
-  limit: z.number().optional(),
-  page: z.number().optional(),
-  order: z.string().optional(),
-};
 const readParams = {
   id: z.string().optional(),
   email: z.string().optional(),
   slug: z.string().optional(),
+  ...selectionParams,
 };
 const editParams = {
   id: z.string(),
@@ -25,78 +21,31 @@ const editParams = {
   location: z.string().optional(),
   facebook: z.string().optional(),
   twitter: z.string().optional(),
-  // Add more fields as needed
 };
 const deleteParams = {
   id: z.string(),
 };
 
 export function registerUserTools(server: McpServer) {
-  // Browse users
-  server.tool(
-    "users_browse",
-    browseParams,
-    async (args, _extra) => {
-      const users = await ghostApiClient.users.browse(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(users, null, 2),
-          },
-        ],
-      };
-    }
+  // Browse/read work with any key. Edit/delete need staff permission, so they
+  // use the Staff Access Token client (which falls back to the primary key, and
+  // returns a clean 403 if that key lacks staff permission).
+  server.tool("users_browse", browseParams, async (args) =>
+    runTool(async () => validateSelectableList(userSchema, await ghostApiClient.users.browse(args)))
   );
 
-  // Read user
-  server.tool(
-    "users_read",
-    readParams,
-    async (args, _extra) => {
-      const user = await ghostApiClient.users.read(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(user, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("users_read", readParams, async (args) =>
+    runTool(async () => validateSelectable(userSchema, await ghostApiClient.users.read(args)))
   );
 
-  // Edit user
-  server.tool(
-    "users_edit",
-    editParams,
-    async (args, _extra) => {
-      const user = await ghostApiClient.users.edit(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(user, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("users_edit", editParams, async (args) =>
+    runTool(async () => validateEntity(userSchema, await ghostStaffClient.users.edit(args)))
   );
 
-  // Delete user
-  server.tool(
-    "users_delete",
-    deleteParams,
-    async (args, _extra) => {
-      await ghostApiClient.users.delete(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: `User with id ${args.id} deleted.`,
-          },
-        ],
-      };
-    }
+  server.tool("users_delete", deleteParams, async (args) =>
+    runTool(async () => {
+      await ghostStaffClient.users.delete(args);
+      return `User with id ${args.id} deleted.`;
+    })
   );
 }

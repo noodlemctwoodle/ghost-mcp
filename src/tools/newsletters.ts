@@ -2,17 +2,13 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
+import { validateEntity, validateSelectable, validateSelectableList, newsletterSchema } from "../schemas";
+import { runTool, browseParams, selectionParams } from "./helpers";
 
-// Parameter schemas as ZodRawShape (object literals)
-const browseParams = {
-  filter: z.string().optional(),
-  limit: z.number().optional(),
-  page: z.number().optional(),
-  order: z.string().optional(),
-};
 const readParams = {
   id: z.string().optional(),
   slug: z.string().optional(),
+  ...selectionParams,
 };
 const addParams = {
   name: z.string(),
@@ -28,7 +24,6 @@ const addParams = {
   show_feature_image: z.boolean().optional(),
   body_font_category: z.string().optional(),
   show_badge: z.boolean().optional(),
-  // Add more fields as needed
 };
 const editParams = {
   id: z.string(),
@@ -37,7 +32,10 @@ const editParams = {
   sender_name: z.string().optional(),
   sender_email: z.string().optional(),
   sender_reply_to: z.string().optional(),
-  status: z.string().optional(),
+  status: z
+    .string()
+    .optional()
+    .describe("'active' or 'archived'. Set 'archived' to archive the newsletter — Ghost has no hard delete."),
   subscribe_on_signup: z.boolean().optional(),
   sort_order: z.number().optional(),
   header_image: z.string().optional(),
@@ -50,95 +48,24 @@ const editParams = {
   footer_content: z.string().optional(),
   show_badge: z.boolean().optional(),
   show_header_name: z.boolean().optional(),
-  // Add more fields as needed
-};
-const deleteParams = {
-  id: z.string(),
 };
 
 export function registerNewsletterTools(server: McpServer) {
-  // Browse newsletters
-  server.tool(
-    "newsletters_browse",
-    browseParams,
-    async (args, _extra) => {
-      const newsletters = await ghostApiClient.newsletters.browse(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(newsletters, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("newsletters_browse", browseParams, async (args) =>
+    runTool(async () => validateSelectableList(newsletterSchema, await ghostApiClient.newsletters.browse(args)))
   );
 
-  // Read newsletter
-  server.tool(
-    "newsletters_read",
-    readParams,
-    async (args, _extra) => {
-      const newsletter = await ghostApiClient.newsletters.read(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(newsletter, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("newsletters_read", readParams, async (args) =>
+    runTool(async () => validateSelectable(newsletterSchema, await ghostApiClient.newsletters.read(args)))
   );
 
-  // Add newsletter
-  server.tool(
-    "newsletters_add",
-    addParams,
-    async (args, _extra) => {
-      const newsletter = await ghostApiClient.newsletters.add(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(newsletter, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("newsletters_add", addParams, async (args) =>
+    runTool(async () => validateEntity(newsletterSchema, await ghostApiClient.newsletters.add(args)))
   );
 
-  // Edit newsletter
-  server.tool(
-    "newsletters_edit",
-    editParams,
-    async (args, _extra) => {
-      const newsletter = await ghostApiClient.newsletters.edit(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(newsletter, null, 2),
-          },
-        ],
-      };
-    }
-  );
-
-  // Delete newsletter
-  server.tool(
-    "newsletters_delete",
-    deleteParams,
-    async (args, _extra) => {
-      await ghostApiClient.newsletters.delete(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Newsletter with id ${args.id} deleted.`,
-          },
-        ],
-      };
-    }
+  // Ghost has no hard delete for newsletters — archive one by setting
+  // status:"archived" via this tool.
+  server.tool("newsletters_edit", editParams, async (args) =>
+    runTool(async () => validateEntity(newsletterSchema, await ghostApiClient.newsletters.edit(args)))
   );
 }

@@ -1,17 +1,17 @@
 // src/tools/invites.ts
+// Invites are not exposed by @tryghost/admin-api, so these go through the direct
+// Admin API client. Browse and delete are staff-gated — they sign with the optional
+// Staff Access Token (staff: true), and a Custom Integration key gets 403. Creating
+// an invite works with the Custom Integration key, so invites_add uses the primary.
+
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ghostApiClient } from "../ghostApi";
+import { adminApiRequest } from "../ghostAdminClient";
+import { validateEnvelope, validateWriteEnvelope, inviteSchema } from "../schemas";
+import { runTool, browseParams } from "./helpers";
 
-// Parameter schemas as ZodRawShape (object literals)
-const browseParams = {
-  filter: z.string().optional(),
-  limit: z.number().optional(),
-  page: z.number().optional(),
-  order: z.string().optional(),
-};
 const addParams = {
-  role_id: z.string(),
+  role_id: z.string().describe("ID of the role to invite the user as (see roles_browse)."),
   email: z.string(),
 };
 const deleteParams = {
@@ -19,54 +19,18 @@ const deleteParams = {
 };
 
 export function registerInviteTools(server: McpServer) {
-  // Browse invites
-  server.tool(
-    "invites_browse",
-    browseParams,
-    async (args, _extra) => {
-      const invites = await ghostApiClient.invites.browse(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(invites, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("invites_browse", browseParams, async (args) =>
+    runTool(async () => validateEnvelope(inviteSchema, await adminApiRequest("invites", { params: args, staff: true }), "invites"))
   );
 
-  // Add invite
-  server.tool(
-    "invites_add",
-    addParams,
-    async (args, _extra) => {
-      const invite = await ghostApiClient.invites.add(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(invite, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("invites_add", addParams, async (args) =>
+    runTool(async () => validateWriteEnvelope(inviteSchema, await adminApiRequest("invites", { method: "POST", body: args }), "invites"))
   );
 
-  // Delete invite
-  server.tool(
-    "invites_delete",
-    deleteParams,
-    async (args, _extra) => {
-      await ghostApiClient.invites.delete(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Invite with id ${args.id} deleted.`,
-          },
-        ],
-      };
-    }
+  server.tool("invites_delete", deleteParams, async (args) =>
+    runTool(async () => {
+      await adminApiRequest("invites", { method: "DELETE", id: args.id, staff: true });
+      return `Invite with id ${args.id} deleted.`;
+    })
   );
 }

@@ -1,23 +1,19 @@
 // src/tools/tiers.ts
+// Tiers are not exposed by @tryghost/admin-api, so these go through the direct
+// Admin API client. Ghost has no DELETE for tiers — archive a tier with
+// tiers_edit (active:false) instead.
+
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ghostApiClient } from "../ghostApi";
+import { adminApiRequest } from "../ghostAdminClient";
+import { validateSelectable, validateEnvelope, validateWriteEnvelope, tierSchema } from "../schemas";
+import { runTool, browseParams, selectionParams } from "./helpers";
 
-// Parameter schemas as ZodRawShape (object literals)
-const browseParams = {
-  filter: z.string().optional(),
-  limit: z.number().optional(),
-  page: z.number().optional(),
-  order: z.string().optional(),
-  include: z.string().optional(),
-};
 const readParams = {
-  id: z.string().optional(),
-  slug: z.string().optional(),
-  include: z.string().optional(),
+  id: z.string(),
+  ...selectionParams,
 };
-const addParams = {
-  name: z.string(),
+const sharedFields = {
   description: z.string().optional(),
   welcome_page_url: z.string().optional(),
   visibility: z.string().optional(),
@@ -25,107 +21,39 @@ const addParams = {
   yearly_price: z.number().optional(),
   currency: z.string().optional(),
   benefits: z.array(z.string()).optional(),
-  // Add more fields as needed
+  active: z.boolean().optional().describe("Set false to archive the tier — Ghost has no tier delete."),
+};
+const addParams = {
+  name: z.string(),
+  ...sharedFields,
 };
 const editParams = {
   id: z.string(),
   name: z.string().optional(),
-  description: z.string().optional(),
-  welcome_page_url: z.string().optional(),
-  visibility: z.string().optional(),
-  monthly_price: z.number().optional(),
-  yearly_price: z.number().optional(),
-  currency: z.string().optional(),
-  benefits: z.array(z.string()).optional(),
-  // Add more fields as needed
-};
-const deleteParams = {
-  id: z.string(),
+  ...sharedFields,
 };
 
 export function registerTierTools(server: McpServer) {
-  // Browse tiers
-  server.tool(
-    "tiers_browse",
-    browseParams,
-    async (args, _extra) => {
-      const tiers = await ghostApiClient.tiers.browse(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(tiers, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("tiers_browse", browseParams, async (args) =>
+    runTool(async () => validateEnvelope(tierSchema, await adminApiRequest("tiers", { params: args }), "tiers"))
   );
 
-  // Read tier
-  server.tool(
-    "tiers_read",
-    readParams,
-    async (args, _extra) => {
-      const tier = await ghostApiClient.tiers.read(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(tier, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("tiers_read", readParams, async (args) =>
+    runTool(async () => {
+      const { id, ...params } = args;
+      const data = await adminApiRequest("tiers", { id, params });
+      return validateSelectable(tierSchema, data.tiers?.[0] ?? data);
+    })
   );
 
-  // Add tier
-  server.tool(
-    "tiers_add",
-    addParams,
-    async (args, _extra) => {
-      const tier = await ghostApiClient.tiers.add(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(tier, null, 2),
-          },
-        ],
-      };
-    }
+  server.tool("tiers_add", addParams, async (args) =>
+    runTool(async () => validateWriteEnvelope(tierSchema, await adminApiRequest("tiers", { method: "POST", body: args }), "tiers"))
   );
 
-  // Edit tier
-  server.tool(
-    "tiers_edit",
-    editParams,
-    async (args, _extra) => {
-      const tier = await ghostApiClient.tiers.edit(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(tier, null, 2),
-          },
-        ],
-      };
-    }
-  );
-
-  // Delete tier
-  server.tool(
-    "tiers_delete",
-    deleteParams,
-    async (args, _extra) => {
-      await ghostApiClient.tiers.delete(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Tier with id ${args.id} deleted.`,
-          },
-        ],
-      };
-    }
+  server.tool("tiers_edit", editParams, async (args) =>
+    runTool(async () => {
+      const { id, ...body } = args;
+      return validateWriteEnvelope(tierSchema, await adminApiRequest("tiers", { method: "PUT", id, body }), "tiers");
+    })
   );
 }
