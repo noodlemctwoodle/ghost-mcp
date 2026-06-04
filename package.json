@@ -14,7 +14,8 @@
         "start": "node build/server.js",
         "prepare": "npm run build",
         "test": "npm run build && node --test test/*.test.js",
-        "test:unit": "node --test test/*.test.js"
+        "test:unit": "node --test test/*.test.js",
+        "test:e2e": "npm run build && node test/e2e/run.cjs"
     },
     "publishConfig": {
         "access": "public"
