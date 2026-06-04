@@ -64,31 +64,26 @@ export const formatsParam = {
     ),
 };
 
-// Fields kept in the compact confirmation returned by post/page write tools.
-const WRITE_SUMMARY_FIELDS = [
-  "id",
-  "uuid",
-  "title",
-  "slug",
-  "status",
-  "url",
-  "visibility",
-  "published_at",
-  "updated_at",
-] as const;
+// Heavy body fields that can blow past an MCP client's response-size limit. Only
+// these are stripped from a write confirmation.
+const WRITE_SUMMARY_OMIT = ["lexical", "html", "mobiledoc", "plaintext"] as const;
 
-// Reduce a created/updated entity to a small confirmation object for write tools
-// (add/edit/copy). A post or page response carries the full `lexical`, `html` and
-// `mobiledoc` body, which can exceed an MCP client's response-size limit even
-// though the write succeeded. Callers that need the whole record read it back with
-// the matching *_read tool. A value that isn't an object, or has none of the
-// summary fields, is returned unchanged.
+// Reduce a created/updated entity to a smaller confirmation object for write tools
+// (add/edit/copy). A post/page response carries the full `lexical`/`html`/
+// `mobiledoc`/`plaintext` body, which can exceed an MCP client's response-size
+// limit even though the write succeeded — so those are dropped. Every other field
+// is preserved, including the meta/SEO fields (meta_description, meta_title, og_*,
+// twitter_*, custom_excerpt, …) a caller may have just set, so the result confirms
+// what was written. Callers that need the body read it back with the *_read tool.
+// A non-object, or an object with no heavy fields, is returned unchanged.
 export function summarizeWrite(entity: unknown): unknown {
-  if (!entity || typeof entity !== "object") return entity;
+  if (!entity || typeof entity !== "object" || Array.isArray(entity)) return entity;
   const source = entity as Record<string, unknown>;
+  const omit = WRITE_SUMMARY_OMIT as readonly string[];
+  if (!omit.some((key) => key in source)) return entity;
   const summary: Record<string, unknown> = {};
-  for (const key of WRITE_SUMMARY_FIELDS) {
-    if (source[key] !== undefined) summary[key] = source[key];
+  for (const [key, value] of Object.entries(source)) {
+    if (!omit.includes(key)) summary[key] = value;
   }
-  return Object.keys(summary).length > 0 ? summary : entity;
+  return summary;
 }

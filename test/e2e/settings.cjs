@@ -44,13 +44,19 @@ async function run(env) {
 
     // POSTS: edit (publish + back-dated published_at + change several)
     const pubAt = "2025-06-01T09:30:00.000Z";
-    const e = await call(c, "posts_edit", { id: pid, updated_at: p.updated_at, status: "published", published_at: pubAt, meta_title: `${TAG} meta EDITED`, og_title: `${TAG} og EDITED`, featured: false });
+    const e = await call(c, "posts_edit", { id: pid, updated_at: p.updated_at, status: "published", published_at: pubAt, meta_title: `${TAG} meta EDITED`, meta_description: `${TAG} metadesc EDITED`, og_title: `${TAG} og EDITED`, og_description: `${TAG} ogdesc EDITED`, twitter_description: `${TAG} twdesc EDITED`, featured: false });
     t.ok("posts_edit (no error)", !e.isError, e.text.slice(0, 90));
+    // Confirm the meta/SEO fields persist AND that the edit response itself keeps them.
+    const ed = e.json || {};
+    check("posts_edit response keeps meta_description", `${TAG} metadesc EDITED`, ed.meta_description);
     const p2 = (await call(c, "posts_read", { id: pid })).json || {};
     check("post.status=published (edit)", "published", p2.status);
     check("post.published_at (edit)", pubAt, p2.published_at, dateEq);
     check("post.meta_title (edit)", `${TAG} meta EDITED`, p2.meta_title);
+    check("post.meta_description (edit)", `${TAG} metadesc EDITED`, p2.meta_description);
     check("post.og_title (edit)", `${TAG} og EDITED`, p2.og_title);
+    check("post.og_description (edit)", `${TAG} ogdesc EDITED`, p2.og_description);
+    check("post.twitter_description (edit)", `${TAG} twdesc EDITED`, p2.twitter_description);
     check("post.featured=false (edit)", false, p2.featured);
     await call(c, "posts_delete", { id: pid });
   }

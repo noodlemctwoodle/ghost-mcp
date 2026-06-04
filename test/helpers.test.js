@@ -32,6 +32,31 @@ test("summarizeWrite keeps identity/status fields and drops heavy body fields", 
   assert.ok(JSON.stringify(out).length < 500);
 });
 
+test("summarizeWrite keeps meta/SEO fields and drops only heavy content (regression: meta_description)", () => {
+  const post = {
+    id: "p1", title: "T",
+    meta_title: "MT", meta_description: "A meta description",
+    og_title: "OGT", og_description: "OGD", twitter_description: "TWD",
+    custom_excerpt: "EXC", canonical_url: "https://x/c",
+    html: "x".repeat(50000), lexical: "y".repeat(50000),
+    mobiledoc: "z".repeat(50000), plaintext: "p".repeat(50000),
+  };
+  const out = summarizeWrite(post);
+  // meta/SEO fields survive — the bug was that these were dropped from the response
+  assert.equal(out.meta_description, "A meta description");
+  assert.equal(out.meta_title, "MT");
+  assert.equal(out.og_description, "OGD");
+  assert.equal(out.twitter_description, "TWD");
+  assert.equal(out.custom_excerpt, "EXC");
+  assert.equal(out.canonical_url, "https://x/c");
+  // heavy body fields are dropped
+  assert.equal(out.html, undefined);
+  assert.equal(out.lexical, undefined);
+  assert.equal(out.mobiledoc, undefined);
+  assert.equal(out.plaintext, undefined);
+  assert.ok(JSON.stringify(out).length < 500);
+});
+
 test("summarizeWrite only includes fields that are present", () => {
   const out = summarizeWrite({ id: "p1", status: "draft" });
   assert.deepEqual(out, { id: "p1", status: "draft" });
