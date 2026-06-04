@@ -61,3 +61,32 @@ export const formatsParam = {
       "Comma-separated content formats to return: 'html', 'plaintext', 'mobiledoc', 'lexical'. Defaults to mobiledoc+lexical (large) — set 'html' or use `fields` to reduce size."
     ),
 };
+
+// Fields kept in the compact confirmation returned by post/page write tools.
+const WRITE_SUMMARY_FIELDS = [
+  "id",
+  "uuid",
+  "title",
+  "slug",
+  "status",
+  "url",
+  "visibility",
+  "published_at",
+  "updated_at",
+] as const;
+
+// Reduce a created/updated entity to a small confirmation object for write tools
+// (add/edit/copy). A post or page response carries the full `lexical`, `html` and
+// `mobiledoc` body, which can exceed an MCP client's response-size limit even
+// though the write succeeded. Callers that need the whole record read it back with
+// the matching *_read tool. A value that isn't an object, or has none of the
+// summary fields, is returned unchanged.
+export function summarizeWrite(entity: unknown): unknown {
+  if (!entity || typeof entity !== "object") return entity;
+  const source = entity as Record<string, unknown>;
+  const summary: Record<string, unknown> = {};
+  for (const key of WRITE_SUMMARY_FIELDS) {
+    if (source[key] !== undefined) summary[key] = source[key];
+  }
+  return Object.keys(summary).length > 0 ? summary : entity;
+}

@@ -7,7 +7,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
 import { adminApiRequest } from "../ghostAdminClient";
 import { validateEntity, validateSelectable, validateSelectableList, pageSchema } from "../schemas";
-import { runTool, browseParams, selectionParams, formatsParam } from "./helpers";
+import { runTool, summarizeWrite, browseParams, selectionParams, formatsParam } from "./helpers";
 
 const pageBrowseParams = {
   ...browseParams,
@@ -93,14 +93,14 @@ export function registerPageTools(server: McpServer) {
   server.tool("pages_add", addParams, async (args) =>
     runTool(async () => {
       const options = args.html ? { source: "html" } : undefined;
-      return validateEntity(pageSchema, await ghostApiClient.pages.add(args, options));
+      return summarizeWrite(validateEntity(pageSchema, await ghostApiClient.pages.add(args, options)));
     })
   );
 
   server.tool("pages_edit", editParams, async (args) =>
     runTool(async () => {
       const options = args.html ? { source: "html" } : undefined;
-      return validateEntity(pageSchema, await ghostApiClient.pages.edit(args, options));
+      return summarizeWrite(validateEntity(pageSchema, await ghostApiClient.pages.edit(args, options)));
     })
   );
 
@@ -117,7 +117,7 @@ export function registerPageTools(server: McpServer) {
     runTool(async () => {
       const data = await adminApiRequest("pages", { method: "POST", id: args.id, action: "copy" });
       const copy = data.pages?.[0];
-      return copy ? validateEntity(pageSchema, copy) : data;
+      return copy ? summarizeWrite(validateEntity(pageSchema, copy)) : data;
     })
   );
 }

@@ -4,7 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
 import { adminApiRequest } from "../ghostAdminClient";
 import { validateEntity, validateSelectable, validateSelectableList, postSchema } from "../schemas";
-import { runTool, browseParams, selectionParams, formatsParam } from "./helpers";
+import { runTool, summarizeWrite, browseParams, selectionParams, formatsParam } from "./helpers";
 
 // Browse accepts the standard list controls plus content-format selection.
 const postBrowseParams = {
@@ -94,14 +94,14 @@ export function registerPostTools(server: McpServer) {
     runTool(async () => {
       // source: "html" tells Ghost to import from the html field
       const options = args.html ? { source: "html" } : undefined;
-      return validateEntity(postSchema, await ghostApiClient.posts.add(args, options));
+      return summarizeWrite(validateEntity(postSchema, await ghostApiClient.posts.add(args, options)));
     })
   );
 
   server.tool("posts_edit", editParams, async (args) =>
     runTool(async () => {
       const options = args.html ? { source: "html" } : undefined;
-      return validateEntity(postSchema, await ghostApiClient.posts.edit(args, options));
+      return summarizeWrite(validateEntity(postSchema, await ghostApiClient.posts.edit(args, options)));
     })
   );
 
@@ -118,7 +118,7 @@ export function registerPostTools(server: McpServer) {
     runTool(async () => {
       const data = await adminApiRequest("posts", { method: "POST", id: args.id, action: "copy" });
       const copy = data.posts?.[0];
-      return copy ? validateEntity(postSchema, copy) : data;
+      return copy ? summarizeWrite(validateEntity(postSchema, copy)) : data;
     })
   );
 }
