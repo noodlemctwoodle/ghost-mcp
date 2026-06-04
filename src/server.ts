@@ -26,6 +26,7 @@ import { registerWebhookTools } from "./tools/webhooks";
 import { registerLabelTools } from "./tools/labels";
 import { registerImageTools } from "./tools/images";
 import { registerThemeTools } from "./tools/themes";
+import { registerSiteTools } from "./tools/site";
 import { registerPrompts } from "./prompts";
 
 // Read the version from package.json so it stays in sync with releases.
@@ -71,6 +72,7 @@ registerWebhookTools(server);
 registerLabelTools(server);
 registerImageTools(server);
 registerThemeTools(server);
+registerSiteTools(server);
 
 // Register prompts
 registerPrompts(server);

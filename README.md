@@ -91,6 +91,7 @@ Tools cover the Ghost Admin API operations exposed by `@tryghost/admin-api`, plu
 | **Webhooks** | `webhooks_add`, `webhooks_edit`, `webhooks_delete` |
 | **Images** | `images_upload` |
 | **Themes** | `themes_upload`, `themes_activate` |
+| **Site** | `site_read` |
 
 Notes:
 - **Tiers & offers have no delete tool**: Ghost archives them rather than deleting — set `active: false` (tiers) or `status: "archived"` (offers) via the `_edit` tool.
