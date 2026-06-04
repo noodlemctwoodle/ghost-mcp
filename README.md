@@ -16,20 +16,40 @@ A Model Context Protocol (MCP) server for interacting with Ghost CMS through LLM
 
 ## Requirements
 
-A **Custom Integration** Admin API key from your Ghost site (Ghost Admin → **Settings → Advanced → Integrations → Add custom integration**). Use the **Admin API Key** (format `{id}:{secret}` — note the colon), not the Content API key.
+A Ghost Admin API key in `{id}:{secret}` form (note the colon — *not* the Content API key). `GHOST_ADMIN_API_KEY` accepts **either**:
+
+- a **Custom Integration key** — scoped; recommended for most setups, or
+- a **Staff Access Token** — authenticates as a staff user with their role's permissions; **required** for the staff/invite/user-management tools (`users_edit`, `users_delete`, `invites_browse`, `invites_delete`).
+
+See [**Authentication & token types**](#authentication--token-types) below for the trade-offs and **how to create each**.
 
 | Variable | Required | Notes |
 |---|---|---|
 | `GHOST_API_URL` | yes | Base URL, e.g. `https://yourblog.com` (no trailing slash, no `/ghost`) |
-| `GHOST_ADMIN_API_KEY` | yes | Admin API key in `{id}:{secret}` form |
+| `GHOST_ADMIN_API_KEY` | yes | A Custom Integration **Admin API key** *or* a **Staff Access Token** — both `{id}:{secret}` |
 | `GHOST_API_VERSION` | no | Defaults to `v5.0`; `v6.0` also supported |
 
 ## Authentication & token types
 
-`GHOST_ADMIN_API_KEY` accepts two kinds of `{id}:{secret}` key. Both use the same JWT auth, but Ghost grants different permissions:
+`GHOST_ADMIN_API_KEY` accepts two kinds of `{id}:{secret}` key. Both use the same JWT auth (so either drops straight into the same env var with no code change), but Ghost grants different permissions.
 
-- **Custom Integration key** (Settings → Advanced → Integrations) — a scoped, fixed permission set. Manages content, members, tags, tiers, offers, newsletters, etc. It **cannot manage staff**: `users_edit`, `users_delete`, `invites_browse` and `invites_delete` return **403** with this key. Safer, and recommended for most setups.
-- **Staff Access Token** (from a staff user's profile page) — authenticates *as that user* with their **role's** permissions. An **Administrator/Owner** token enables the staff/invite tools above. It's high-privilege — keep it secret, and for an LLM-driven server weigh the access it grants before using one in production.
+### Custom Integration key (recommended)
+
+A scoped, fixed permission set — manages content, members, tags, tiers, offers, newsletters, etc. It **cannot manage staff**: `users_edit`, `users_delete`, `invites_browse` and `invites_delete` return **403** with this key. Safer for most setups.
+
+**Create it:** Ghost Admin → **Settings → Advanced → Integrations → Add custom integration** → give it a name → copy the **Admin API Key** (the `{id}:{secret}` value with a colon — *not* the Content API Key).
+
+### Staff Access Token (for staff/invite/user management)
+
+Authenticates *as a staff user* with that user's **role** permissions. Use an **Administrator** or **Owner** token to enable the staff/invite tools above. It is high-privilege — treat it like a password; for an LLM-driven server, weigh the access it grants before using one in production.
+
+**Create / capture it:**
+1. Sign in as the user whose permissions you need (an **Administrator** or the **Owner** for staff/invite management).
+2. Open that user's profile — click the account avatar (bottom-left) → **Your profile**, or **Settings → Staff → [the user]**.
+3. Scroll to the bottom of the profile page to **Staff access token**.
+4. Copy it (use the regenerate control if you need a fresh one). Copy it immediately — Ghost shows it only once.
+
+It's the same `{id}:{secret}` shape as an integration key, so put it straight into `GHOST_ADMIN_API_KEY`.
 
 `roles_browse`, `users_browse`/`users_read` and `invites_add` work with either key.
 
