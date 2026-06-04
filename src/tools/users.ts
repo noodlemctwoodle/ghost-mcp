@@ -1,7 +1,7 @@
 // src/tools/users.ts
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ghostApiClient } from "../ghostApi";
+import { ghostApiClient, ghostStaffClient } from "../ghostApi";
 import { runTool, browseParams, selectionParams } from "./helpers";
 
 const readParams = {
@@ -26,6 +26,9 @@ const deleteParams = {
 };
 
 export function registerUserTools(server: McpServer) {
+  // Browse/read work with any key. Edit/delete need staff permission, so they
+  // use the Staff Access Token client (which falls back to the primary key, and
+  // returns a clean 403 if that key lacks staff permission).
   server.tool("users_browse", browseParams, async (args) =>
     runTool(() => ghostApiClient.users.browse(args))
   );
@@ -35,12 +38,12 @@ export function registerUserTools(server: McpServer) {
   );
 
   server.tool("users_edit", editParams, async (args) =>
-    runTool(() => ghostApiClient.users.edit(args))
+    runTool(() => ghostStaffClient.users.edit(args))
   );
 
   server.tool("users_delete", deleteParams, async (args) =>
     runTool(async () => {
-      await ghostApiClient.users.delete(args);
+      await ghostStaffClient.users.delete(args);
       return `User with id ${args.id} deleted.`;
     })
   );

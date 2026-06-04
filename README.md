@@ -16,42 +16,45 @@ A Model Context Protocol (MCP) server for interacting with Ghost CMS through LLM
 
 ## Requirements
 
-A Ghost Admin API key in `{id}:{secret}` form (note the colon — *not* the Content API key). `GHOST_ADMIN_API_KEY` accepts **either**:
-
-- a **Custom Integration key** — scoped; recommended for most setups, or
-- a **Staff Access Token** — authenticates as a staff user with their role's permissions; **required** for the staff/invite/user-management tools (`users_edit`, `users_delete`, `invites_browse`, `invites_delete`).
-
-See [**Authentication & token types**](#authentication--token-types) below for the trade-offs and **how to create each**.
+Keys are `{id}:{secret}` (note the colon — *not* the Content API key). `GHOST_ADMIN_API_KEY` is the primary key; `GHOST_STAFF_TOKEN` is optional and, when set, is used for the staff/invite tools.
 
 | Variable | Required | Notes |
 |---|---|---|
 | `GHOST_API_URL` | yes | Base URL, e.g. `https://yourblog.com` (no trailing slash, no `/ghost`) |
-| `GHOST_ADMIN_API_KEY` | yes | A Custom Integration **Admin API key** *or* a **Staff Access Token** — both `{id}:{secret}` |
+| `GHOST_ADMIN_API_KEY` | yes | Primary key — a Custom Integration **Admin API key** *or* a **Staff Access Token** |
+| `GHOST_STAFF_TOKEN` | no | Optional **Staff Access Token**. When set, `users_edit`, `users_delete` and the `invites_*` tools authenticate with it — so you can keep an Integration key as the primary and still manage staff/invites |
 | `GHOST_API_VERSION` | no | Defaults to `v5.0`; `v6.0` also supported |
+
+**For 100% tool coverage**, set `GHOST_ADMIN_API_KEY` to a **Custom Integration key** (covers webhooks, content, themes) *and* `GHOST_STAFF_TOKEN` to an **Administrator Staff Access Token** (covers users/invites). See [Authentication & token types](#authentication--token-types) for why neither key alone is enough, and how to create each.
 
 ## Authentication & token types
 
-`GHOST_ADMIN_API_KEY` accepts two kinds of `{id}:{secret}` key. Both use the same JWT auth (so either drops straight into the same env var with no code change), but Ghost grants different permissions.
+Ghost gates some endpoints by token type, and **no single key covers every tool**. The server can hold both keys and routes each call to the right one — the staff/invite tools use `GHOST_STAFF_TOKEN` when it's set, otherwise they fall back to `GHOST_ADMIN_API_KEY` (returning a clean 403 if that key lacks the permission).
 
-### Custom Integration key (recommended)
+| Tool(s) | Needs |
+|---|---|
+| `users_edit`, `users_delete`, `invites_browse`, `invites_delete` | **Staff Access Token** (a Custom Integration key → **403**) |
+| `webhooks_add` / `edit` / `delete` | **Custom Integration key** (a staff token can't create webhooks) |
+| `themes_upload`, `themes_activate` | an **Administrator** Staff Access Token *or* an Integration key (the **Owner's** staff token is rejected) |
+| everything else (~46 tools, incl. `invites_add`) | either key |
 
-A scoped, fixed permission set — manages content, members, tags, tiers, offers, newsletters, etc. It **cannot manage staff**: `users_edit`, `users_delete`, `invites_browse` and `invites_delete` return **403** with this key. Safer for most setups.
+Both keys are `{id}:{secret}` and use the same JWT auth.
 
-**Create it:** Ghost Admin → **Settings → Advanced → Integrations → Add custom integration** → give it a name → copy the **Admin API Key** (the `{id}:{secret}` value with a colon — *not* the Content API Key).
+### Custom Integration key
 
-### Staff Access Token (for staff/invite/user management)
+Scoped, fixed permissions — manages content, members, tags, tiers, offers, newsletters, **webhooks** and themes. It **cannot manage staff** (`users_edit/delete`, `invites_browse/delete` → 403). Recommended as the **primary** (`GHOST_ADMIN_API_KEY`).
 
-Authenticates *as a staff user* with that user's **role** permissions. Use an **Administrator** or **Owner** token to enable the staff/invite tools above. It is high-privilege — treat it like a password; for an LLM-driven server, weigh the access it grants before using one in production.
+**Create it:** Ghost Admin → **Settings → Advanced → Integrations → Add custom integration** → name it → copy the **Admin API Key** (`{id}:{secret}`, with a colon — *not* the Content API Key).
+
+### Staff Access Token
+
+Authenticates *as a staff user* with that user's **role** permissions; an **Administrator** token enables the staff/invite tools. High-privilege — treat it like a password, and for an LLM-driven server weigh the access it grants before using one in production. Put it in `GHOST_STAFF_TOKEN`.
 
 **Create / capture it:**
-1. Sign in as the user whose permissions you need (an **Administrator** or the **Owner** for staff/invite management).
-2. Open that user's profile — click the account avatar (bottom-left) → **Your profile**, or **Settings → Staff → [the user]**.
+1. Sign in as an **Administrator** (avoid the Owner — its token is rejected by some endpoints, e.g. themes).
+2. Open that user's profile — account avatar (bottom-left) → **Your profile**, or **Settings → Staff → [the user]**.
 3. Scroll to the bottom of the profile page to **Staff access token**.
-4. Copy it (use the regenerate control if you need a fresh one). Copy it immediately — Ghost shows it only once.
-
-It's the same `{id}:{secret}` shape as an integration key, so put it straight into `GHOST_ADMIN_API_KEY`.
-
-`roles_browse`, `users_browse`/`users_read` and `invites_add` work with either key.
+4. Copy it immediately — Ghost shows it only once (regenerate for a fresh one).
 
 ## Usage
 
@@ -72,7 +75,8 @@ Then point your MCP client (e.g. Claude Desktop, `claude_desktop_config.json`) a
       "args": ["/absolute/path/to/ghost-mcp/build/server.js"],
       "env": {
         "GHOST_API_URL": "https://yourblog.com",
-        "GHOST_ADMIN_API_KEY": "your_admin_api_key",
+        "GHOST_ADMIN_API_KEY": "your_integration_admin_api_key",
+        "GHOST_STAFF_TOKEN": "your_admin_staff_access_token",
         "GHOST_API_VERSION": "v5.0"
       }
     }
@@ -92,7 +96,8 @@ Then point your MCP client (e.g. Claude Desktop, `claude_desktop_config.json`) a
       "args": ["-y", "@fanyangmeng/ghost-mcp"],
       "env": {
         "GHOST_API_URL": "https://yourblog.com",
-        "GHOST_ADMIN_API_KEY": "your_admin_api_key",
+        "GHOST_ADMIN_API_KEY": "your_integration_admin_api_key",
+        "GHOST_STAFF_TOKEN": "your_admin_staff_access_token",
         "GHOST_API_VERSION": "v5.0"
       }
     }

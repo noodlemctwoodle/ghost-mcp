@@ -5,11 +5,12 @@
 // Auth mirrors @tryghost/admin-api exactly: an HS256 JWT signed with the hex
 // secret half of the Admin API key, with the key id as the `kid` header and the
 // admin API prefix as the audience. The token is short-lived (5 minutes) and
-// regenerated per request.
+// regenerated per request. Requests can optionally be signed with the Staff
+// Access Token instead (for staff-only resources like invites).
 
 import axios from "axios";
 import { createHmac } from "node:crypto";
-import { GHOST_API_URL, GHOST_ADMIN_API_KEY, GHOST_API_VERSION } from "./config";
+import { GHOST_API_URL, GHOST_ADMIN_API_KEY, GHOST_API_VERSION, GHOST_STAFF_TOKEN } from "./config";
 import { toGhostError } from "./ghostError";
 
 // Resolve the Admin API path/audience prefix for a given version string.
@@ -29,8 +30,8 @@ function base64url(input: string): string {
   return Buffer.from(input).toString("base64url");
 }
 
-function generateToken(): string {
-  const [id, secret] = GHOST_ADMIN_API_KEY.split(":");
+function generateToken(key: string): string {
+  const [id, secret] = key.split(":");
   const header = base64url(JSON.stringify({ alg: "HS256", typ: "JWT", kid: id }));
   const issuedAt = Math.floor(Date.now() / 1000);
   const payload = base64url(
@@ -55,6 +56,9 @@ export interface AdminRequestOptions {
   action?: string;
   body?: Record<string, unknown>;
   params?: Record<string, unknown>;
+  // Sign with the optional Staff Access Token (for staff-only resources like
+  // invites). Falls back to the primary Admin API key when none is configured.
+  staff?: boolean;
 }
 
 // Make a request to an Admin API resource and return the parsed response body
@@ -64,7 +68,8 @@ export async function adminApiRequest(
   resource: string,
   options: AdminRequestOptions = {}
 ): Promise<any> {
-  const { method = "GET", id, action, body, params } = options;
+  const { method = "GET", id, action, body, params, staff } = options;
+  const key = staff && GHOST_STAFF_TOKEN ? GHOST_STAFF_TOKEN : GHOST_ADMIN_API_KEY;
   const idPart = id ? `${encodeURIComponent(id)}/` : "";
   const actionPart = action ? `${action}/` : "";
   const url = `${baseUrl}/ghost/api${adminPrefix(GHOST_API_VERSION)}${resource}/${idPart}${actionPart}`;
@@ -76,7 +81,7 @@ export async function adminApiRequest(
       params,
       data: body ? { [resource]: [body] } : undefined,
       headers: {
-        Authorization: `Ghost ${generateToken()}`,
+        Authorization: `Ghost ${generateToken(key)}`,
         "Accept-Version": GHOST_API_VERSION,
         "Content-Type": "application/json",
       },
