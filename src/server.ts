@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+// MUST be the first import: installs credential redaction on stdout/stderr before
+// any other module (Admin API clients, MCP SDK) can produce output.
+import "./bootstrapRedaction";
+
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {

@@ -3,6 +3,8 @@
 // official @tryghost/admin-api client or from direct axios calls — into a
 // single GhostError type and a clear, user-facing message.
 
+import { redactSecrets } from "./redaction";
+
 export class GhostError extends Error {
   readonly statusCode?: number;
   readonly code?: string;
@@ -73,7 +75,9 @@ export function toGhostError(error: unknown): GhostError {
   });
 }
 
-// Produce a single human-readable string for returning in an MCP tool error result.
+// Produce a single human-readable string for returning in an MCP tool error
+// result. Redacted as a second layer in case any field ever carries a secret —
+// the I/O-boundary redactor (src/redaction.ts) is the primary guarantee.
 export function formatGhostError(error: unknown): string {
   const e = toGhostError(error);
   const lines = [`Ghost API error: ${e.message}`];
@@ -83,5 +87,5 @@ export function formatGhostError(error: unknown): string {
   if (e.statusCode) {
     lines.push(`HTTP status: ${e.statusCode}`);
   }
-  return lines.join("\n");
+  return redactSecrets(lines.join("\n"));
 }
