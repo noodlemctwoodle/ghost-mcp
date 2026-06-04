@@ -37,9 +37,8 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          # Deeper security coverage — appropriate for a server that handles
-          # Admin API credentials. Drop to the default suite if it is too noisy.
-          queries: security-extended
+          # Query suite (security-extended) and path exclusions live in the config.
+          config-file: ./.github/codeql/codeql-config.yml
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4

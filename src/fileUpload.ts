@@ -1,10 +1,10 @@
 // src/fileUpload.ts
 // Resolve an upload input (a local file path or a remote URL) to a local file
 // path that the @tryghost/admin-api upload methods can stream. Remote URLs are
-// downloaded to a temp file that the caller is responsible for cleaning up.
+// downloaded into a private temp directory that the caller cleans up.
 
 import axios from "axios";
-import { existsSync, writeFileSync, unlinkSync } from "node:fs";
+import { existsSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, extname, basename } from "node:path";
 import { GhostError } from "./ghostError";
@@ -12,7 +12,8 @@ import { assertSafePublicUrl } from "./security";
 
 export interface ResolvedFile {
   path: string;
-  isTemp: boolean;
+  // A temp directory to remove on cleanup (set only for downloaded URLs).
+  cleanupDir?: string;
 }
 
 export async function resolveUploadFile(filePath?: string, url?: string): Promise<ResolvedFile> {
@@ -20,7 +21,7 @@ export async function resolveUploadFile(filePath?: string, url?: string): Promis
     if (!existsSync(filePath)) {
       throw new GhostError(`Local file not found: ${filePath}`);
     }
-    return { path: filePath, isTemp: false };
+    return { path: filePath };
   }
 
   if (url) {
@@ -37,18 +38,21 @@ export async function resolveUploadFile(filePath?: string, url?: string): Promis
     if (!extname(name)) {
       name += ".bin";
     }
-    const tmp = join(tmpdir(), `ghost-mcp-${Date.now()}-${name}`);
+    // mkdtemp creates a uniquely-named, 0700 directory — avoids the predictable
+    // shared-/tmp filename that is vulnerable to symlink/race attacks.
+    const dir = mkdtempSync(join(tmpdir(), "ghost-mcp-"));
+    const tmp = join(dir, name);
     writeFileSync(tmp, Buffer.from(response.data));
-    return { path: tmp, isTemp: true };
+    return { path: tmp, cleanupDir: dir };
   }
 
   throw new GhostError("Provide either a local file path or a URL to upload.");
 }
 
 export function cleanupTempFile(file: ResolvedFile): void {
-  if (file.isTemp) {
+  if (file.cleanupDir) {
     try {
-      unlinkSync(file.path);
+      rmSync(file.cleanupDir, { recursive: true, force: true });
     } catch {
       // best-effort cleanup; ignore failures
     }
