@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { adminApiRequest } from "../ghostAdminClient";
+import { validateSelectable, validateEnvelope, labelSchema } from "../schemas";
 import { runTool, browseParams, selectionParams } from "./helpers";
 
 const readParams = {
@@ -26,25 +27,25 @@ const deleteParams = {
 
 export function registerLabelTools(server: McpServer) {
   server.tool("labels_browse", browseParams, async (args) =>
-    runTool(() => adminApiRequest("labels", { params: args }))
+    runTool(async () => validateEnvelope(labelSchema, await adminApiRequest("labels", { params: args }), "labels"))
   );
 
   server.tool("labels_read", readParams, async (args) =>
     runTool(async () => {
       const { id, ...params } = args;
       const data = await adminApiRequest("labels", { id, params });
-      return data.labels?.[0] ?? data;
+      return validateSelectable(labelSchema, data.labels?.[0] ?? data);
     })
   );
 
   server.tool("labels_add", addParams, async (args) =>
-    runTool(() => adminApiRequest("labels", { method: "POST", body: args }))
+    runTool(async () => validateEnvelope(labelSchema, await adminApiRequest("labels", { method: "POST", body: args }), "labels"))
   );
 
   server.tool("labels_edit", editParams, async (args) =>
-    runTool(() => {
+    runTool(async () => {
       const { id, ...body } = args;
-      return adminApiRequest("labels", { method: "PUT", id, body });
+      return validateEnvelope(labelSchema, await adminApiRequest("labels", { method: "PUT", id, body }), "labels");
     })
   );
 

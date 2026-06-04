@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
+import { validateEntity, themeSchema } from "../schemas";
 import { runTool } from "./helpers";
 import { resolveUploadFile, cleanupTempFile } from "../fileUpload";
 
@@ -24,7 +25,7 @@ export function registerThemeTools(server: McpServer) {
     runTool(async () => {
       const file = await resolveUploadFile(args.file_path, args.url);
       try {
-        return await ghostApiClient.themes.upload({ file: file.path });
+        return validateEntity(themeSchema, await ghostApiClient.themes.upload({ file: file.path }));
       } finally {
         cleanupTempFile(file);
       }
@@ -32,6 +33,6 @@ export function registerThemeTools(server: McpServer) {
   );
 
   server.tool("themes_activate", activateParams, async (args) =>
-    runTool(() => ghostApiClient.themes.activate(args.name))
+    runTool(async () => validateEntity(themeSchema, await ghostApiClient.themes.activate(args.name)))
   );
 }

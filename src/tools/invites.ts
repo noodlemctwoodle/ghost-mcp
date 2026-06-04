@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { adminApiRequest } from "../ghostAdminClient";
+import { validateEnvelope, inviteSchema } from "../schemas";
 import { runTool, browseParams } from "./helpers";
 
 const addParams = {
@@ -18,11 +19,11 @@ const deleteParams = {
 
 export function registerInviteTools(server: McpServer) {
   server.tool("invites_browse", browseParams, async (args) =>
-    runTool(() => adminApiRequest("invites", { params: args, staff: true }))
+    runTool(async () => validateEnvelope(inviteSchema, await adminApiRequest("invites", { params: args, staff: true }), "invites"))
   );
 
   server.tool("invites_add", addParams, async (args) =>
-    runTool(() => adminApiRequest("invites", { method: "POST", body: args, staff: true }))
+    runTool(async () => validateEnvelope(inviteSchema, await adminApiRequest("invites", { method: "POST", body: args, staff: true }), "invites"))
   );
 
   server.tool("invites_delete", deleteParams, async (args) =>

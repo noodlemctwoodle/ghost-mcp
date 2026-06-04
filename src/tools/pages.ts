@@ -6,6 +6,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
 import { adminApiRequest } from "../ghostAdminClient";
+import { validateEntity, validateSelectable, validateSelectableList, pageSchema } from "../schemas";
 import { runTool, browseParams, selectionParams, formatsParam } from "./helpers";
 
 const pageBrowseParams = {
@@ -78,24 +79,24 @@ const deleteParams = {
 
 export function registerPageTools(server: McpServer) {
   server.tool("pages_browse", pageBrowseParams, async (args) =>
-    runTool(() => ghostApiClient.pages.browse(args))
+    runTool(async () => validateSelectableList(pageSchema, await ghostApiClient.pages.browse(args)))
   );
 
   server.tool("pages_read", readParams, async (args) =>
-    runTool(() => ghostApiClient.pages.read(args))
+    runTool(async () => validateSelectable(pageSchema, await ghostApiClient.pages.read(args)))
   );
 
   server.tool("pages_add", addParams, async (args) =>
-    runTool(() => {
+    runTool(async () => {
       const options = args.html ? { source: "html" } : undefined;
-      return ghostApiClient.pages.add(args, options);
+      return validateEntity(pageSchema, await ghostApiClient.pages.add(args, options));
     })
   );
 
   server.tool("pages_edit", editParams, async (args) =>
-    runTool(() => {
+    runTool(async () => {
       const options = args.html ? { source: "html" } : undefined;
-      return ghostApiClient.pages.edit(args, options);
+      return validateEntity(pageSchema, await ghostApiClient.pages.edit(args, options));
     })
   );
 
@@ -111,7 +112,8 @@ export function registerPageTools(server: McpServer) {
   server.tool("pages_copy", { id: z.string() }, async (args) =>
     runTool(async () => {
       const data = await adminApiRequest("pages", { method: "POST", id: args.id, action: "copy" });
-      return data.pages?.[0] ?? data;
+      const copy = data.pages?.[0];
+      return copy ? validateEntity(pageSchema, copy) : data;
     })
   );
 }

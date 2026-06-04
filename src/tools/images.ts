@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
+import { validateEntity, imageSchema } from "../schemas";
 import { runTool } from "./helpers";
 import { resolveUploadFile, cleanupTempFile } from "../fileUpload";
 
@@ -30,11 +31,14 @@ export function registerImageTools(server: McpServer) {
     runTool(async () => {
       const file = await resolveUploadFile(args.file_path, args.url);
       try {
-        return await ghostApiClient.images.upload({
-          file: file.path,
-          purpose: args.purpose,
-          ref: args.ref,
-        });
+        return validateEntity(
+          imageSchema,
+          await ghostApiClient.images.upload({
+            file: file.path,
+            purpose: args.purpose,
+            ref: args.ref,
+          })
+        );
       } finally {
         cleanupTempFile(file);
       }

@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
+import { validateEntity, validateSelectable, validateSelectableList, newsletterSchema } from "../schemas";
 import { runTool, browseParams, selectionParams } from "./helpers";
 
 const readParams = {
@@ -51,20 +52,20 @@ const editParams = {
 
 export function registerNewsletterTools(server: McpServer) {
   server.tool("newsletters_browse", browseParams, async (args) =>
-    runTool(() => ghostApiClient.newsletters.browse(args))
+    runTool(async () => validateSelectableList(newsletterSchema, await ghostApiClient.newsletters.browse(args)))
   );
 
   server.tool("newsletters_read", readParams, async (args) =>
-    runTool(() => ghostApiClient.newsletters.read(args))
+    runTool(async () => validateSelectable(newsletterSchema, await ghostApiClient.newsletters.read(args)))
   );
 
   server.tool("newsletters_add", addParams, async (args) =>
-    runTool(() => ghostApiClient.newsletters.add(args))
+    runTool(async () => validateEntity(newsletterSchema, await ghostApiClient.newsletters.add(args)))
   );
 
   // Ghost has no hard delete for newsletters — archive one by setting
   // status:"archived" via this tool.
   server.tool("newsletters_edit", editParams, async (args) =>
-    runTool(() => ghostApiClient.newsletters.edit(args))
+    runTool(async () => validateEntity(newsletterSchema, await ghostApiClient.newsletters.edit(args)))
   );
 }

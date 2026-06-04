@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { adminApiRequest } from "../ghostAdminClient";
+import { validateSelectable, validateEnvelope, tierSchema } from "../schemas";
 import { runTool, browseParams, selectionParams } from "./helpers";
 
 const readParams = {
@@ -34,25 +35,25 @@ const editParams = {
 
 export function registerTierTools(server: McpServer) {
   server.tool("tiers_browse", browseParams, async (args) =>
-    runTool(() => adminApiRequest("tiers", { params: args }))
+    runTool(async () => validateEnvelope(tierSchema, await adminApiRequest("tiers", { params: args }), "tiers"))
   );
 
   server.tool("tiers_read", readParams, async (args) =>
     runTool(async () => {
       const { id, ...params } = args;
       const data = await adminApiRequest("tiers", { id, params });
-      return data.tiers?.[0] ?? data;
+      return validateSelectable(tierSchema, data.tiers?.[0] ?? data);
     })
   );
 
   server.tool("tiers_add", addParams, async (args) =>
-    runTool(() => adminApiRequest("tiers", { method: "POST", body: args }))
+    runTool(async () => validateEnvelope(tierSchema, await adminApiRequest("tiers", { method: "POST", body: args }), "tiers"))
   );
 
   server.tool("tiers_edit", editParams, async (args) =>
-    runTool(() => {
+    runTool(async () => {
       const { id, ...body } = args;
-      return adminApiRequest("tiers", { method: "PUT", id, body });
+      return validateEnvelope(tierSchema, await adminApiRequest("tiers", { method: "PUT", id, body }), "tiers");
     })
   );
 }

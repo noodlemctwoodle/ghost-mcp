@@ -4,10 +4,11 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { adminApiRequest } from "../ghostAdminClient";
+import { validateEnvelope, roleSchema } from "../schemas";
 import { runTool, browseParams } from "./helpers";
 
 export function registerRoleTools(server: McpServer) {
   server.tool("roles_browse", browseParams, async (args) =>
-    runTool(() => adminApiRequest("roles", { params: args }))
+    runTool(async () => validateEnvelope(roleSchema, await adminApiRequest("roles", { params: args }), "roles"))
   );
 }

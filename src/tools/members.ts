@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
+import { validateEntity, validateSelectable, validateSelectableList, memberSchema } from "../schemas";
 import { runTool, browseParams, selectionParams } from "./helpers";
 
 const readParams = {
@@ -30,19 +31,19 @@ const deleteParams = {
 
 export function registerMemberTools(server: McpServer) {
   server.tool("members_browse", browseParams, async (args) =>
-    runTool(() => ghostApiClient.members.browse(args))
+    runTool(async () => validateSelectableList(memberSchema, await ghostApiClient.members.browse(args)))
   );
 
   server.tool("members_read", readParams, async (args) =>
-    runTool(() => ghostApiClient.members.read(args))
+    runTool(async () => validateSelectable(memberSchema, await ghostApiClient.members.read(args)))
   );
 
   server.tool("members_add", addParams, async (args) =>
-    runTool(() => ghostApiClient.members.add(args))
+    runTool(async () => validateEntity(memberSchema, await ghostApiClient.members.add(args)))
   );
 
   server.tool("members_edit", editParams, async (args) =>
-    runTool(() => ghostApiClient.members.edit(args))
+    runTool(async () => validateEntity(memberSchema, await ghostApiClient.members.edit(args)))
   );
 
   server.tool("members_delete", deleteParams, async (args) =>

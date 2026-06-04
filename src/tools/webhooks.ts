@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
+import { validateEntity, webhookSchema } from "../schemas";
 import { runTool } from "./helpers";
 
 const addParams = {
@@ -25,11 +26,11 @@ const deleteParams = {
 
 export function registerWebhookTools(server: McpServer) {
   server.tool("webhooks_add", addParams, async (args) =>
-    runTool(() => ghostApiClient.webhooks.add(args))
+    runTool(async () => validateEntity(webhookSchema, await ghostApiClient.webhooks.add(args)))
   );
 
   server.tool("webhooks_edit", editParams, async (args) =>
-    runTool(() => ghostApiClient.webhooks.edit(args))
+    runTool(async () => validateEntity(webhookSchema, await ghostApiClient.webhooks.edit(args)))
   );
 
   server.tool("webhooks_delete", deleteParams, async (args) =>

@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
+import { validateEntity, validateSelectable, validateSelectableList, tagSchema } from "../schemas";
 import { runTool, browseParams, selectionParams } from "./helpers";
 
 const readParams = {
@@ -26,19 +27,19 @@ const deleteParams = {
 
 export function registerTagTools(server: McpServer) {
   server.tool("tags_browse", browseParams, async (args) =>
-    runTool(() => ghostApiClient.tags.browse(args))
+    runTool(async () => validateSelectableList(tagSchema, await ghostApiClient.tags.browse(args)))
   );
 
   server.tool("tags_read", readParams, async (args) =>
-    runTool(() => ghostApiClient.tags.read(args))
+    runTool(async () => validateSelectable(tagSchema, await ghostApiClient.tags.read(args)))
   );
 
   server.tool("tags_add", addParams, async (args) =>
-    runTool(() => ghostApiClient.tags.add(args))
+    runTool(async () => validateEntity(tagSchema, await ghostApiClient.tags.add(args)))
   );
 
   server.tool("tags_edit", editParams, async (args) =>
-    runTool(() => ghostApiClient.tags.edit(args))
+    runTool(async () => validateEntity(tagSchema, await ghostApiClient.tags.edit(args)))
   );
 
   server.tool("tags_delete", deleteParams, async (args) =>

@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient, ghostStaffClient } from "../ghostApi";
+import { validateEntity, validateSelectable, validateSelectableList, userSchema } from "../schemas";
 import { runTool, browseParams, selectionParams } from "./helpers";
 
 const readParams = {
@@ -30,15 +31,15 @@ export function registerUserTools(server: McpServer) {
   // use the Staff Access Token client (which falls back to the primary key, and
   // returns a clean 403 if that key lacks staff permission).
   server.tool("users_browse", browseParams, async (args) =>
-    runTool(() => ghostApiClient.users.browse(args))
+    runTool(async () => validateSelectableList(userSchema, await ghostApiClient.users.browse(args)))
   );
 
   server.tool("users_read", readParams, async (args) =>
-    runTool(() => ghostApiClient.users.read(args))
+    runTool(async () => validateSelectable(userSchema, await ghostApiClient.users.read(args)))
   );
 
   server.tool("users_edit", editParams, async (args) =>
-    runTool(() => ghostStaffClient.users.edit(args))
+    runTool(async () => validateEntity(userSchema, await ghostStaffClient.users.edit(args)))
   );
 
   server.tool("users_delete", deleteParams, async (args) =>

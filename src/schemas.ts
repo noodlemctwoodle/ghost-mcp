@@ -97,6 +97,16 @@ export const siteSchema = z
   })
   .passthrough();
 
+// Image upload returns { url, ref } — keyed on url, not id.
+export const imageSchema = z
+  .object({ url: z.string(), ref: z.string().nullable().optional() })
+  .passthrough();
+
+// Theme upload/activate returns a theme object keyed on name (no id).
+export const themeSchema = z
+  .object({ name: z.string(), active: z.boolean().optional() })
+  .passthrough();
+
 // Inferred types — replace the former hand-written interfaces in models.ts.
 export type Post = z.infer<typeof postSchema>;
 export type Page = z.infer<typeof pageSchema>;
@@ -111,6 +121,8 @@ export type Role = z.infer<typeof roleSchema>;
 export type Invite = z.infer<typeof inviteSchema>;
 export type Webhook = z.infer<typeof webhookSchema>;
 export type Site = z.infer<typeof siteSchema>;
+export type Image = z.infer<typeof imageSchema>;
+export type Theme = z.infer<typeof themeSchema>;
 
 // Validate a single entity, throwing a GhostError if the response is the wrong
 // shape (e.g. missing id, or not an object at all). Unknown fields are preserved.
@@ -123,4 +135,40 @@ export function validateEntity<T extends z.ZodTypeAny>(schema: T, data: unknown)
     throw new GhostError(`Unexpected Ghost response shape — ${detail}`);
   }
   return result.data;
+}
+
+// Field-tolerant validation for browse/read responses. Those tools accept a
+// `fields` selector that can omit any field (including id), so the schema is
+// relaxed to optional keys (`.partial()`): present fields are still type-checked
+// and the value must be an object, but missing fields are tolerated. Returns the
+// value unchanged.
+export function validateSelectable(schema: z.ZodObject<any>, data: unknown): unknown {
+  const result = schema.partial().safeParse(data);
+  if (!result.success) {
+    const detail = result.error.issues
+      .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+      .join("; ");
+    throw new GhostError(`Unexpected Ghost response shape — ${detail}`);
+  }
+  return data;
+}
+
+// Field-tolerant validation of a browse result (an array of entities). Asserts
+// the value is an array and validates each element; returns it unchanged.
+export function validateSelectableList(schema: z.ZodObject<any>, data: unknown): unknown {
+  if (!Array.isArray(data)) {
+    throw new GhostError("Unexpected Ghost response shape — expected an array of entities.");
+  }
+  for (const item of data) validateSelectable(schema, item);
+  return data;
+}
+
+// Validate the entity array inside a Ghost envelope ({ <key>: [...], meta }) and
+// return the envelope unchanged, preserving pagination meta.
+export function validateEnvelope(schema: z.ZodObject<any>, data: unknown, key: string): unknown {
+  const env = data as Record<string, unknown> | null;
+  if (env && typeof env === "object" && Array.isArray(env[key])) {
+    validateSelectableList(schema, env[key]);
+  }
+  return data;
 }

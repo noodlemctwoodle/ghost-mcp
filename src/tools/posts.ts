@@ -3,6 +3,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ghostApiClient } from "../ghostApi";
 import { adminApiRequest } from "../ghostAdminClient";
+import { validateEntity, validateSelectable, validateSelectableList, postSchema } from "../schemas";
 import { runTool, browseParams, selectionParams, formatsParam } from "./helpers";
 
 // Browse accepts the standard list controls plus content-format selection.
@@ -78,25 +79,25 @@ const deleteParams = {
 
 export function registerPostTools(server: McpServer) {
   server.tool("posts_browse", postBrowseParams, async (args) =>
-    runTool(() => ghostApiClient.posts.browse(args))
+    runTool(async () => validateSelectableList(postSchema, await ghostApiClient.posts.browse(args)))
   );
 
   server.tool("posts_read", readParams, async (args) =>
-    runTool(() => ghostApiClient.posts.read(args))
+    runTool(async () => validateSelectable(postSchema, await ghostApiClient.posts.read(args)))
   );
 
   server.tool("posts_add", addParams, async (args) =>
-    runTool(() => {
+    runTool(async () => {
       // source: "html" tells Ghost to import from the html field
       const options = args.html ? { source: "html" } : undefined;
-      return ghostApiClient.posts.add(args, options);
+      return validateEntity(postSchema, await ghostApiClient.posts.add(args, options));
     })
   );
 
   server.tool("posts_edit", editParams, async (args) =>
-    runTool(() => {
+    runTool(async () => {
       const options = args.html ? { source: "html" } : undefined;
-      return ghostApiClient.posts.edit(args, options);
+      return validateEntity(postSchema, await ghostApiClient.posts.edit(args, options));
     })
   );
 
@@ -112,7 +113,8 @@ export function registerPostTools(server: McpServer) {
   server.tool("posts_copy", { id: z.string() }, async (args) =>
     runTool(async () => {
       const data = await adminApiRequest("posts", { method: "POST", id: args.id, action: "copy" });
-      return data.posts?.[0] ?? data;
+      const copy = data.posts?.[0];
+      return copy ? validateEntity(postSchema, copy) : data;
     })
   );
 }

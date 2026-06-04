@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { adminApiRequest } from "../ghostAdminClient";
+import { validateSelectable, validateEnvelope, offerSchema } from "../schemas";
 import { runTool, browseParams, selectionParams } from "./helpers";
 
 const readParams = {
@@ -42,25 +43,25 @@ function buildOfferBody(args: Record<string, any>): Record<string, unknown> {
 
 export function registerOfferTools(server: McpServer) {
   server.tool("offers_browse", browseParams, async (args) =>
-    runTool(() => adminApiRequest("offers", { params: args }))
+    runTool(async () => validateEnvelope(offerSchema, await adminApiRequest("offers", { params: args }), "offers"))
   );
 
   server.tool("offers_read", readParams, async (args) =>
     runTool(async () => {
       const { id, ...params } = args;
       const data = await adminApiRequest("offers", { id, params });
-      return data.offers?.[0] ?? data;
+      return validateSelectable(offerSchema, data.offers?.[0] ?? data);
     })
   );
 
   server.tool("offers_add", addParams, async (args) =>
-    runTool(() => adminApiRequest("offers", { method: "POST", body: buildOfferBody(args) }))
+    runTool(async () => validateEnvelope(offerSchema, await adminApiRequest("offers", { method: "POST", body: buildOfferBody(args) }), "offers"))
   );
 
   server.tool("offers_edit", editParams, async (args) =>
-    runTool(() => {
+    runTool(async () => {
       const { id, ...body } = args;
-      return adminApiRequest("offers", { method: "PUT", id, body });
+      return validateEnvelope(offerSchema, await adminApiRequest("offers", { method: "PUT", id, body }), "offers");
     })
   );
 }
