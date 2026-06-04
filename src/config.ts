@@ -1,5 +1,7 @@
 // Read configuration values directly from process.env
-export const GHOST_API_URL: string = process.env.GHOST_API_URL as string;
+// Normalise away any trailing slash — @tryghost/admin-api rejects a URL that has
+// one ("must not have a trailing slash"), which would otherwise crash startup.
+export const GHOST_API_URL: string = (process.env.GHOST_API_URL ?? "").replace(/\/+$/, "");
 export const GHOST_ADMIN_API_KEY: string = process.env.GHOST_ADMIN_API_KEY as string;
 export const GHOST_API_VERSION: string = process.env.GHOST_API_VERSION as string || 'v5.0'; // Default to v5.0
 
