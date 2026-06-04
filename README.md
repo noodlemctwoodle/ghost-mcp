@@ -31,12 +31,14 @@ Keys are `{id}:{secret}` (note the colon — *not* the Content API key). `GHOST_
 
 Ghost gates some endpoints by token type, and **no single key covers every tool**. The server can hold both keys and routes each call to the right one — the staff/invite tools use `GHOST_STAFF_TOKEN` when it's set, otherwise they fall back to `GHOST_ADMIN_API_KEY` (returning a clean 403 if that key lacks the permission).
 
-| Tool(s) | Needs |
-|---|---|
-| `users_edit`, `users_delete`, `invites_browse`, `invites_delete` | **Staff Access Token** (a Custom Integration key → **403**) |
-| `webhooks_add` / `edit` / `delete` | **Custom Integration key** (a staff token can't create webhooks) |
-| `themes_upload`, `themes_activate` | an **Administrator** Staff Access Token *or* an Integration key (the **Owner's** staff token is rejected) |
-| everything else (~46 tools, incl. `invites_add`) | either key |
+**Admin endpoints** — work with a **Custom Integration** key (`GHOST_ADMIN_API_KEY`). This is the large majority: posts, pages, tags, members, newsletters, tiers, offers, labels, roles, images, **themes**, **webhooks**, site, and `invites_add`. *(Webhooks are integration-only — a staff token cannot create them, so keep an Integration key as the primary.)*
+
+**Staff endpoints** — require a **Staff Access Token** (`GHOST_STAFF_TOKEN`); a Custom Integration key returns **403**. Just four tools:
+
+- `users_edit`, `users_delete` — edit / remove a staff user
+- `invites_browse`, `invites_delete` — list / revoke pending staff invites
+
+The server routes these four to `GHOST_STAFF_TOKEN` when it's set; otherwise they fall back to `GHOST_ADMIN_API_KEY` and return a clean 403 if that key can't perform them.
 
 Both keys are `{id}:{secret}` and use the same JWT auth.
 
@@ -109,6 +111,10 @@ Then point your MCP client (e.g. Claude Desktop, `claude_desktop_config.json`) a
 
 Tools cover the Ghost Admin API operations exposed by `@tryghost/admin-api`, plus the documented endpoints the official client omits (tiers, offers, roles, invites, labels, copy).
 
+### Admin endpoints
+
+Work with the **Custom Integration** key (`GHOST_ADMIN_API_KEY`):
+
 | Resource | Tools |
 |---|---|
 | **Posts** | `posts_browse`, `posts_read`, `posts_add`, `posts_edit`, `posts_delete`, `posts_copy` |
@@ -119,13 +125,22 @@ Tools cover the Ghost Admin API operations exposed by `@tryghost/admin-api`, plu
 | **Tiers** | `tiers_browse`, `tiers_read`, `tiers_add`, `tiers_edit` |
 | **Offers** | `offers_browse`, `offers_read`, `offers_add`, `offers_edit` |
 | **Labels** | `labels_browse`, `labels_read`, `labels_add`, `labels_edit`, `labels_delete` |
-| **Users** | `users_browse`, `users_read`, `users_edit`, `users_delete` |
+| **Users** | `users_browse`, `users_read` |
 | **Roles** | `roles_browse` |
-| **Invites** | `invites_browse`, `invites_add`, `invites_delete` |
+| **Invites** | `invites_add` |
 | **Webhooks** | `webhooks_add`, `webhooks_edit`, `webhooks_delete` |
 | **Images** | `images_upload` |
 | **Themes** | `themes_upload`, `themes_activate` |
 | **Site** | `site_read` |
+
+### Staff endpoints
+
+Require a **Staff Access Token** (`GHOST_STAFF_TOKEN`) — a Custom Integration key returns **403**:
+
+| Resource | Tools |
+|---|---|
+| **Users** | `users_edit`, `users_delete` |
+| **Invites** | `invites_browse`, `invites_delete` |
 
 Notes:
 - **Archiving instead of deleting**: tiers, offers and newsletters have no delete tool — Ghost archives them. Use the `_edit` tool: `active: false` (tiers), `status: "archived"` (offers and newsletters). Roles are browse-only (no read-by-id).
