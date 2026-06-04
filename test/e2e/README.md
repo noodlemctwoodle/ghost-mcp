@@ -22,13 +22,14 @@ throwaway theme, and (briefly) activate it.
 ```bash
 GHOST_API_URL="https://your-test-blog.example.com" \
 GHOST_ADMIN_API_KEY="<id>:<secret>" \
-GHOST_STAFF_TOKEN="<id>:<secret>" \      # optional — enables the staff/invite tools
+GHOST_STAFF_TOKEN="<id>:<secret>" \
 GHOST_TEST_HOST="your-test-blog.example.com" \
 npm run test:e2e
 ```
 
 Optional:
 
+- `GHOST_STAFF_TOKEN` — enables the staff/invite tools (`users_edit`/`delete`, `invites_browse`/`delete`).
 - `GHOST_API_VERSION` — defaults to `v6.0`.
 - `GHOST_E2E_RESTORE_THEME` — theme reactivated after the theme-upload test
   (defaults to `source`).

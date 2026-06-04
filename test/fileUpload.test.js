@@ -19,6 +19,14 @@ test("url download lands in a private temp dir; cleanup removes it", async () =>
   assert.ok(!fs.existsSync(dir), "temp dir is removed on cleanup");
 });
 
+test("url with a trailing-slash path falls back to a safe filename inside the temp dir", async () => {
+  const f = await resolveUploadFile(undefined, "http://93.184.216.34/");
+  assert.ok(f.path.includes("ghost-mcp-"), "stays inside the private temp dir");
+  assert.match(f.path, /upload\.bin$/, "falls back to a safe name");
+  assert.ok(fs.existsSync(f.path));
+  cleanupTempFile(f);
+});
+
 test("url download is refused for an SSRF-unsafe URL before fetching", async () => {
   await assert.rejects(() => resolveUploadFile(undefined, "http://169.254.169.254/latest/meta"));
 });
