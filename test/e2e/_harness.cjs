@@ -8,8 +8,9 @@
 //   GHOST_DEVELOPMENT=true \
 //   GHOST_API_URL=https://your-test.example.com \
 //   GHOST_ADMIN_API_KEY=<id:secret> \
-//   GHOST_STAFF_TOKEN=<id:secret>            # optional, enables staff/invite tools \
+//   GHOST_STAFF_TOKEN=<id:secret> \
 //   npm run test:e2e
+//   (GHOST_STAFF_TOKEN is optional and enables the staff/invite tools.)
 const { spawn } = require("node:child_process");
 const path = require("node:path");
 
