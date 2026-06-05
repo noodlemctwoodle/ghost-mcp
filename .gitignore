@@ -1,15 +1,32 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
+# Dependencies
+node_modules/
+
+# Build output
 build/
 dist/
-wheels/
-*.egg-info
+*.tsbuildinfo
 
-# Virtual environments
-.venv
-.vscode
-.qodo
-node_modules/
-build/
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment / secrets (never commit real credentials)
+.env
+.env.*
+!.env.example
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Editors & local tooling
+.vscode/
+.idea/
+.qodo/
 knowledge/
+
+# macOS
+.DS_Store
