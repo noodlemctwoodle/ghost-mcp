@@ -11,13 +11,11 @@ manually-triggered pipeline) before cutting a release.
 
 ## Safety
 
-The suite **refuses to run** unless two conditions both hold: `GHOST_DEVELOPMENT=true`
-explicitly flags the target as a development instance (optional, **off by default** —
-so a production target, the default, is refused, which fails closed), **and**
-`GHOST_TEST_HOST` is set and contained in `GHOST_API_URL`. Together these make it
-impossible to point the destructive tests at a production blog by accident. Always
-use a throwaway test site — the suites create, edit, publish, archive and delete
-content, upload an image and a throwaway theme, and (briefly) activate it.
+The suite **refuses to run** unless `GHOST_DEVELOPMENT=true` explicitly flags the
+target as a development instance. It is optional and **off by default**, so a
+production target (the default) is refused — the guard fails closed. Always use a
+throwaway test site: the suites create, edit, publish, archive and delete content,
+upload an image and a throwaway theme, and (briefly) activate it.
 
 ## Running
 
@@ -26,13 +24,14 @@ GHOST_DEVELOPMENT="true" \
 GHOST_API_URL="https://your-test-blog.example.com" \
 GHOST_ADMIN_API_KEY="<id>:<secret>" \
 GHOST_STAFF_TOKEN="<id>:<secret>" \
-GHOST_TEST_HOST="your-test-blog.example.com" \
 npm run test:e2e
 ```
 
 `GHOST_DEVELOPMENT` is the developer opt-in that permits destructive runs; it is
 not a server setting and is unused by the published package. Without it (the
-default), a configured run is **refused** rather than skipped.
+default), a configured run is **refused** rather than skipped. It is a plain flag
+with no host cross-check, so only enable it on a config whose `GHOST_API_URL`
+points at a throwaway instance.
 
 Optional:
 
