@@ -60,6 +60,8 @@ export interface AdminRequestOptions {
   id?: string;
   action?: string;
   body?: Record<string, unknown>;
+  // Send a pre-shaped array as the resource payload, e.g. settings: [{key,value}].
+  bodyArray?: unknown[];
   params?: Record<string, unknown>;
   // Sign with the optional Staff Access Token (for staff-only resources like
   // invites). Falls back to the primary Admin API key when none is configured.
@@ -73,7 +75,7 @@ export async function adminApiRequest(
   resource: string,
   options: AdminRequestOptions = {}
 ): Promise<any> {
-  const { method = "GET", id, action, body, params, staff } = options;
+  const { method = "GET", id, action, body, bodyArray, params, staff } = options;
   const key = staff && GHOST_STAFF_TOKEN ? GHOST_STAFF_TOKEN : GHOST_ADMIN_API_KEY;
   const idPart = id ? `${encodeURIComponent(id)}/` : "";
   const actionPart = action ? `${action}/` : "";
@@ -84,11 +86,39 @@ export async function adminApiRequest(
       method,
       url,
       params,
-      data: body ? { [resource]: [body] } : undefined,
+      data: bodyArray ? { [resource]: bodyArray } : body ? { [resource]: [body] } : undefined,
+      timeout: 30000,
       headers: {
         Authorization: `Ghost ${generateToken(key)}`,
         "Accept-Version": GHOST_API_VERSION,
         "Content-Type": "application/json",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw toGhostError(error);
+  }
+}
+
+// Multipart upload to an Admin API endpoint the official client doesn't expose
+// (members CSV import, redirects upload). Returns the parsed response body.
+export async function adminApiUpload(
+  pathSegment: string,
+  options: { field: string; filename: string; contentType: string; data: string; staff?: boolean }
+): Promise<any> {
+  const { field, filename, contentType, data, staff } = options;
+  const key = staff && GHOST_STAFF_TOKEN ? GHOST_STAFF_TOKEN : GHOST_ADMIN_API_KEY;
+  const url = `${baseUrl}/ghost/api${adminPrefix(GHOST_API_VERSION)}${pathSegment}/`;
+  const form = new FormData();
+  form.append(field, new Blob([data], { type: contentType }), filename);
+  try {
+    const response = await axios.post(url, form, {
+      timeout: 30000,
+      maxContentLength: 25 * 1024 * 1024,
+      maxBodyLength: 25 * 1024 * 1024,
+      headers: {
+        Authorization: `Ghost ${generateToken(key)}`,
+        "Accept-Version": GHOST_API_VERSION,
       },
     });
     return response.data;

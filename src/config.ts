@@ -10,6 +10,18 @@ export const GHOST_API_VERSION: string = process.env.GHOST_API_VERSION as string
 // Integration key gets 403 for those. (invites_add works with the primary key.)
 export const GHOST_STAFF_TOKEN: string | undefined = process.env.GHOST_STAFF_TOKEN || undefined;
 
+// Opt-in flags (default off):
+// - GHOST_MCP_EXPERIMENTAL: register the experimental, undocumented-endpoint tools.
+// - GHOST_MCP_READONLY: register only read tools (browse/read/site/config + resources).
+// - GHOST_MCP_DISABLED_TOOLS: comma-separated tool names to skip registering.
+const truthy = (v: string | undefined): boolean => /^(1|true|yes|on)$/i.test(v ?? "");
+export const GHOST_MCP_EXPERIMENTAL: boolean = truthy(process.env.GHOST_MCP_EXPERIMENTAL);
+export const GHOST_MCP_READONLY: boolean = truthy(process.env.GHOST_MCP_READONLY);
+export const GHOST_MCP_DISABLED_TOOLS: string[] = (process.env.GHOST_MCP_DISABLED_TOOLS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 // Basic validation to ensure required environment variables are set
 if (!GHOST_API_URL) {
     console.error("Error: GHOST_API_URL environment variable is not set.");

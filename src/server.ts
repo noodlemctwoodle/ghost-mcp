@@ -31,6 +31,9 @@ import { registerLabelTools } from "./tools/labels";
 import { registerImageTools } from "./tools/images";
 import { registerThemeTools } from "./tools/themes";
 import { registerSiteTools } from "./tools/site";
+import { registerExperimentalTools } from "./tools/experimental";
+import { withToolPolicy } from "./tools/policy";
+import { GHOST_MCP_EXPERIMENTAL, GHOST_MCP_READONLY } from "./config";
 import { registerPrompts } from "./prompts";
 
 // Read the version from package.json so it stays in sync with releases.
@@ -61,22 +64,33 @@ server.resource("post", new ResourceTemplate("post://{post_id}", { list: undefin
 server.resource("page", new ResourceTemplate("page://{page_id}", { list: undefined }), handlePageResource);
 server.resource("blog-info", "blog://info", handleBlogInfoResource);
 
-// Register tools
-registerPostTools(server);
-registerPageTools(server);
-registerMemberTools(server);
-registerUserTools(server);
-registerTagTools(server);
-registerTierTools(server);
-registerOfferTools(server);
-registerNewsletterTools(server);
-registerInviteTools(server);
-registerRoleTools(server);
-registerWebhookTools(server);
-registerLabelTools(server);
-registerImageTools(server);
-registerThemeTools(server);
-registerSiteTools(server);
+// Register tools. The policy wrapper applies GHOST_MCP_READONLY (write tools
+// skipped) and GHOST_MCP_DISABLED_TOOLS (named tools skipped) at registration
+// time, so the individual tool modules need no changes.
+const toolServer = withToolPolicy(server);
+registerPostTools(toolServer);
+registerPageTools(toolServer);
+registerMemberTools(toolServer);
+registerUserTools(toolServer);
+registerTagTools(toolServer);
+registerTierTools(toolServer);
+registerOfferTools(toolServer);
+registerNewsletterTools(toolServer);
+registerInviteTools(toolServer);
+registerRoleTools(toolServer);
+registerWebhookTools(toolServer);
+registerLabelTools(toolServer);
+registerImageTools(toolServer);
+registerThemeTools(toolServer);
+registerSiteTools(toolServer);
+
+// Opt-in experimental tools (undocumented endpoints). Off unless enabled.
+if (GHOST_MCP_EXPERIMENTAL) {
+    registerExperimentalTools(toolServer);
+}
+
+if (GHOST_MCP_READONLY) console.error("[ghost-mcp] read-only mode: write tools are not registered.");
+if (GHOST_MCP_EXPERIMENTAL) console.error("[ghost-mcp] experimental tools enabled (undocumented endpoints).");
 
 // Register prompts
 registerPrompts(server);

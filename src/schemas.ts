@@ -107,6 +107,14 @@ export const themeSchema = z
   .object({ name: z.string(), active: z.boolean().optional() })
   .passthrough();
 
+// Experimental-endpoint schemas (lenient, like the rest).
+export const configSchema = z.object({ version: z.string().optional() }).passthrough();
+export const settingSchema = z.object({ key: z.string() }).passthrough();
+export const snippetSchema = entity.extend({ name: z.string().optional() });
+export const redirectSchema = z
+  .object({ from: z.string().optional(), to: z.string().optional() })
+  .passthrough();
+
 // Inferred types — replace the former hand-written interfaces in models.ts.
 export type Post = z.infer<typeof postSchema>;
 export type Page = z.infer<typeof pageSchema>;
@@ -123,6 +131,10 @@ export type Webhook = z.infer<typeof webhookSchema>;
 export type Site = z.infer<typeof siteSchema>;
 export type Image = z.infer<typeof imageSchema>;
 export type Theme = z.infer<typeof themeSchema>;
+export type Config = z.infer<typeof configSchema>;
+export type Setting = z.infer<typeof settingSchema>;
+export type Snippet = z.infer<typeof snippetSchema>;
+export type Redirect = z.infer<typeof redirectSchema>;
 
 // Validate a single entity, throwing a GhostError if the response is the wrong
 // shape (e.g. missing id, or not an object at all). Unknown fields are preserved.
@@ -160,6 +172,17 @@ export function validateSelectableList(schema: z.ZodObject<any>, data: unknown):
     throw new GhostError("Unexpected Ghost response shape — expected an array of entities.");
   }
   for (const item of data) validateSelectable(schema, item);
+  return data;
+}
+
+// Strict array validation: asserts an array and validates each item with
+// validateEntity (no `.partial()`). For responses with no `fields` selector,
+// where every item must be fully formed — e.g. settings always carry `key`.
+export function validateEntityList<T extends z.ZodTypeAny>(schema: T, data: unknown): unknown {
+  if (!Array.isArray(data)) {
+    throw new GhostError("Unexpected Ghost response shape — expected an array of entities.");
+  }
+  for (const item of data) validateEntity(schema, item);
   return data;
 }
 

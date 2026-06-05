@@ -12,6 +12,8 @@ A Model Context Protocol (MCP) server for interacting with Ghost CMS through LLM
 - Consistent error handling: failures are returned as a clean `GhostError` message instead of crashing the tool call
 - Responses validated against lenient zod schemas (preserves Ghost's full field set; catches malformed responses)
 - Hardened remote-URL uploads: an SSRF guard rejects private/internal/metadata hosts, with no redirects and size/timeout limits
+- Optional **[experimental tools](#experimental-tools-opt-in)** (`GHOST_MCP_EXPERIMENTAL`) for verified-but-undocumented endpoints — site config & settings, media/files uploads, member CSV import, snippets, redirects and theme deletion — with destructive config writes confirmation-gated
+- **Read-only mode** (`GHOST_MCP_READONLY`) and per-tool disabling (`GHOST_MCP_DISABLED_TOOLS`) to scope what the server can do
 - Ghost v5 and v6 supported
 
 ## Requirements
@@ -24,6 +26,9 @@ Keys are `{id}:{secret}` (note the colon — *not* the Content API key). `GHOST_
 | `GHOST_ADMIN_API_KEY` | yes | Primary key — a Custom Integration **Admin API key** *or* a **Staff Access Token** |
 | `GHOST_STAFF_TOKEN` | no | Optional **Staff Access Token**. When set, `users_edit`, `users_delete` and the `invites_*` tools authenticate with it — so you can keep an Integration key as the primary and still manage staff/invites |
 | `GHOST_API_VERSION` | no | Defaults to `v5.0`; `v6.0` also supported |
+| `GHOST_MCP_EXPERIMENTAL` | no | `true` to also register the [experimental tools](#experimental-tools-opt-in) (undocumented endpoints). Off by default |
+| `GHOST_MCP_READONLY` | no | `true` to register **only** read tools (`*_browse`, `*_read`, `*_download`); every write/upload/delete is withheld |
+| `GHOST_MCP_DISABLED_TOOLS` | no | Comma-separated tool names to skip registering, e.g. `posts_delete,members_delete` |
 
 **For 100% tool coverage**, set `GHOST_ADMIN_API_KEY` to a **Custom Integration key** (covers webhooks, content, themes) *and* `GHOST_STAFF_TOKEN` to an **Administrator Staff Access Token** (covers users/invites). See [Authentication & token types](#authentication--token-types) for why neither key alone is enough, and how to create each.
 
@@ -147,6 +152,35 @@ Notes:
 - **Uploads**: `images_upload` and `themes_upload` accept either a local `file_path` or a `url`. Remote URLs are fetched server-side behind an SSRF guard (only public http(s) hosts — private, loopback, link-local and cloud-metadata addresses are refused), with no redirects, a 15s timeout and a 25 MB cap. A local `file_path` reads a file on the machine running the server (Ghost validates the content server-side).
 - **Copy**: `posts_copy` / `pages_copy` create a draft duplicate.
 
+### Experimental tools (opt-in)
+
+Set `GHOST_MCP_EXPERIMENTAL=true` to additionally register tools for Admin API endpoints that **work but aren't part of the official `@tryghost/admin-api` client**. They're verified against Ghost v6 by a live E2E suite, but are **unsupported** and may change across Ghost releases — hence opt-in and off by default.
+
+Token routing follows the same boundary as the core tools — reads and uploads use the Integration key; settings/snippets/redirects/theme-delete need a Staff Access Token:
+
+| Resource | Tools | Token |
+|---|---|---|
+| **Config** | `config_read` | Integration |
+| **Settings** | `settings_read` | Integration |
+| **Settings** | `settings_edit` *(confirm-gated)* | Staff |
+| **Media** | `media_upload` | Integration |
+| **Files** | `files_upload` | Integration |
+| **Members** | `members_import` (CSV) | Integration |
+| **Snippets** | `snippets_browse`, `snippets_read`, `snippets_add`, `snippets_edit`, `snippets_delete` | Staff |
+| **Redirects** | `redirects_download` | Staff |
+| **Redirects** | `redirects_upload` *(confirm-gated)* | Staff |
+| **Themes** | `themes_delete` *(confirm-gated)* | Staff |
+
+- **Confirmation gate.** `settings_edit`, `redirects_upload` and `themes_delete` overwrite or remove live site configuration. Called **without** `confirm: true` they make **no change** — they return an exact summary of what *would* happen (for settings, a `key: old → new` diff) and ask the caller to re-invoke with `confirm: true`. A deliberate second checkpoint for an LLM-driven client.
+- **Snippets** are stored as Mobiledoc on current Ghost: pass plain `text` (converted automatically) or a raw `mobiledoc` JSON string — Lexical-only is rejected by the API.
+- **Redirects.** `redirects_download` returns the raw redirects file (YAML or JSON, as stored). `redirects_upload` takes a JSON array of `{ from, to, permanent }` and **replaces the entire set** — include every redirect you want to keep.
+- **Theme delete** cannot remove the **active** theme — activate another first.
+
+### Operating modes
+
+- **Read-only** — `GHOST_MCP_READONLY=true` registers only `*_browse`, `*_read` and `*_download` tools; every create/edit/delete/upload (core *and* experimental) is withheld at registration, so a write tool is never exposed to the model.
+- **Disable specific tools** — `GHOST_MCP_DISABLED_TOOLS="posts_delete,themes_delete"` skips exactly those tools, whatever else is enabled.
+
 ### Keeping responses small
 
 Browse/read tools accept `fields` (e.g. `id,title,status,url`) and `include`; posts/pages also accept `formats` (`html`, `plaintext`, `mobiledoc`, `lexical`). By default Ghost returns large content payloads, so pass `fields` when listing to avoid oversized responses.
@@ -168,6 +202,7 @@ The server also exposes one MCP prompt:
 - **`@tryghost/admin-api`** handles auth, posts/pages/tags/members/users/newsletters/webhooks and image/theme uploads.
 - A small **direct Admin API client** (`src/ghostAdminClient.ts`) covers the documented endpoints the official package omits — tiers, offers, roles, invites, labels, and the post/page `copy` action — using the same JWT scheme.
 - **Every tool and resource validates its response** against a lenient zod schema (`src/schemas.ts`); the upload **SSRF guard** lives in `src/security.ts`.
+- **Opt-in experimental tools** (`src/tools/experimental/`) reach further verified-but-undocumented endpoints (config, settings, media/files, member CSV import, snippets, redirects, theme delete) via the direct client plus a multipart upload helper (`adminApiUpload`); the registration policy for read-only mode and disabled-tools lives in `src/tools/policy.ts`.
 
 ## Error Handling
 
@@ -182,6 +217,7 @@ This server holds Admin API credentials and acts on your live Ghost site, so it 
 - **Input & response validation.** The MCP SDK enforces each tool's typed parameter schema on the way in. On the way out, **every tool validates its response** against a lenient zod schema (`src/schemas.ts`): browse/read are field-tolerant (a `fields` selector may legitimately omit keys, including `id`), while writes and uploads require a fully-formed entity. A malformed payload is reported, not passed through.
 - **Secret redaction (defence in depth).** Credentials are read only from environment variables. A redaction layer (`src/redaction.ts`), installed before any other module loads, scrubs the configured key/secret — and any Ghost JWT auth value — from **every byte written to stdout/stderr**, and an `uncaughtException`/`unhandledRejection` handler redacts fatal errors too (Node's crash printer bypasses the stream wrapper). So no path — ours, the MCP SDK's, or a dependency's axios error carrying the `Authorization` header — can leak a credential. Verified by fault-injecting every error branch (404 / 422 / 401 / 403 / SSRF / network / malformed-key) across tools **and** resources and scanning all output.
 - **Local files.** A local `file_path` upload reads from the filesystem of the machine running the server, so run it only where you trust the inputs.
+- **Opt-in experimental surface & confirmation gate.** The [experimental tools](#experimental-tools-opt-in) (undocumented endpoints) are **off unless `GHOST_MCP_EXPERIMENTAL=true`**. The three that overwrite live configuration — `settings_edit`, `redirects_upload`, `themes_delete` — are **confirmation-gated**: without `confirm: true` they change nothing and return a diff/summary first. **Read-only mode** (`GHOST_MCP_READONLY=true`) withholds every write tool, and `GHOST_MCP_DISABLED_TOOLS` removes named tools — both enforced at registration, so a withheld tool is never exposed to the model.
 
 ## Contributing
 

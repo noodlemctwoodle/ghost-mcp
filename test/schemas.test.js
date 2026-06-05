@@ -29,6 +29,12 @@ test("validateSelectableList accepts an array (mixed id presence), rejects non-a
   assert.throws(() => S.validateSelectableList(S.postSchema, { id: "a" }));
 });
 
+test("validateEntityList strictly requires each item's key (no .partial()), rejects non-arrays", () => {
+  assert.doesNotThrow(() => S.validateEntityList(S.settingSchema, [{ key: "title", value: "x" }, { key: "description", value: "y" }]));
+  assert.throws(() => S.validateEntityList(S.settingSchema, [{ key: "title" }, { value: "missing key" }]), /response shape/);
+  assert.throws(() => S.validateEntityList(S.settingSchema, { key: "title" }));
+});
+
 test("validateEnvelope validates the inner array, returns the envelope, rejects bad inner items", () => {
   const env = { tiers: [{ id: "t1" }], meta: { page: 1 } };
   assert.equal(S.validateEnvelope(S.tierSchema, env, "tiers"), env);
