@@ -4,6 +4,12 @@ name: "ghost-mcp CodeQL config"
 queries:
   - uses: security-extended
 
+# Extend taint analysis to local untrusted sources (environment variables, file
+# system, command-line args, databases) on top of the default remote sources. This
+# server reads Admin credentials from the environment and ingests uploaded files,
+# so local data flows are part of the real attack surface.
+threat-models: local
+
 # Test code is never published (package.json `files` ships only build/), so it is
 # not part of the attack surface — exclude it from analysis to avoid noise such as
 # insecure-temp-file findings in throwaway E2E fixtures.
