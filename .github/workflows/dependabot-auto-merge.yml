@@ -1,0 +1,36 @@
+name: dependabot-auto-merge
+
+# Solo-dev automation: turn on auto-merge for Dependabot minor/patch PRs so they
+# merge themselves once the required checks pass (CI on Node 20/22 + CodeQL). Major
+# version bumps are left for manual review. The PR still goes through the full
+# branch ruleset before merging — this only removes the manual click.
+#
+# pull_request_target (not pull_request) so the workflow definition is always taken
+# from the protected base branch, even on a Dependabot PR that edits this file. The
+# job never checks out or runs PR code, so there is no pwn-request risk. It runs only
+# on opened/reopened, so auto-merge is enabled once (idempotent — no re-run errors).
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    steps:
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for minor and patch updates
+        if: steps.meta.outputs.update-type == 'version-update:semver-minor' || steps.meta.outputs.update-type == 'version-update:semver-patch'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
