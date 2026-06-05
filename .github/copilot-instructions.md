@@ -22,9 +22,12 @@ and acts on a production Ghost site on behalf of an LLM, so it is security-sensi
    `assertSafePublicUrl` + `guardedAgents` (`src/security.ts`): public hosts only, no
    redirects, size/time caps.
 3. Token routing & gating. Staff-only endpoints use the staff token: the official
-   client via `ghostStaffClient` (e.g. `users_edit`/`users_delete`), the direct client
-   via `staff: true` (invites + experimental). Destructive config writes
-   (`settings_edit`, `redirects_upload`, `themes_delete`) keep their confirmation gate
+   client via `ghostStaffClient` (`users_edit`/`users_delete`), the direct client via
+   `staff: true` (invites, and the staff-gated experimental tools `settings_edit`,
+   `snippets_*`, `redirects_*`, `themes_delete`). The other experimental tools
+   (`config_read`, `settings_read`, `media_upload`, `files_upload`, `members_import`)
+   use the integration key. Destructive config writes (`settings_edit`,
+   `redirects_upload`, `themes_delete`) keep their confirmation gate
    (`confirmationRequired`).
 4. Response validation. Entity-returning browse/read/add/edit tools validate output
    (writes -> `validateWriteEnvelope`/`validateEntity`; browse/read -> the
@@ -37,7 +40,8 @@ and acts on a production Ghost site on behalf of an LLM, so it is security-sensi
 - Tool names are `<resource>_<verb>`; read-only tools end in `_browse`/`_read`/
   `_download` (the registration policy classifies on that suffix).
 - Tests use `node:test` (`test/*.test.js`, offline, run in CI). The live E2E suite
-  (`test/e2e/`) is opt-in, does not run in CI, and never uses real credentials.
+  (`test/e2e/`) is opt-in and does not run in CI; it takes real Admin credentials
+  from the environment, which are never committed.
 - If `package.json` version changes, `package-lock.json` must match (root and
   `packages[""]`).
 - Commits follow Conventional Commits (`feat`/`fix`/`refactor`/`test`/`docs`/`chore`
