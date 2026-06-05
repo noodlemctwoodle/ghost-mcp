@@ -8,9 +8,15 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const AGENTS_DIR = path.join(__dirname, "..", ".github", "agents");
-const VALID_ALIASES = new Set(["read", "search", "edit", "execute", "web", "agent", "todo"]);
-// MCP-namespaced tool: exactly one slash, e.g. `github/get_pull_request`.
-const MCP_NAMESPACED = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+// Primary tool aliases plus the documented compatible aliases (the underlying tool
+// names that map to each primary), all case-insensitive.
+const VALID_ALIASES = new Set([
+  "read", "search", "edit", "execute", "web", "agent", "todo",
+  "notebookread", "grep", "glob", "multiedit", "write", "notebookedit",
+  "shell", "bash", "powershell", "websearch", "webfetch", "custom-agent", "task", "todowrite",
+]);
+// MCP tool reference: `server/tool`, or the `server/*` wildcard for a whole server.
+const MCP_NAMESPACED = /^[A-Za-z0-9_.-]+\/([A-Za-z0-9_.-]+|\*)$/;
 
 // Minimal, CRLF-tolerant frontmatter parser. Handles `key: value`, an inline list
 // `key: [a, b]`, and a multi-line YAML list (`key:` then indented `- item` lines).
@@ -66,7 +72,7 @@ for (const f of files) {
         if (t === "*" || MCP_NAMESPACED.test(t)) continue;
         assert.ok(
           VALID_ALIASES.has(t.toLowerCase()),
-          `${f}: invalid tool "${t}" (use an alias read/search/edit/execute/web/agent/todo, "*", or an MCP server/tool)`
+          `${f}: invalid tool "${t}" (use a built-in alias/compatible name, "*", or an MCP "server/tool" or "server/*")`
         );
       }
     }
