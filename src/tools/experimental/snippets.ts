@@ -17,7 +17,7 @@ const contentFields = {
   mobiledoc: z
     .string()
     .optional()
-    .describe("Snippet content as a Mobiledoc JSON string. Takes precedence over `text`. (This Ghost stores snippets as Mobiledoc; Lexical-only is rejected.)"),
+    .describe("Snippet content as a Mobiledoc JSON string. Takes precedence over `text`. (Ghost stores snippets as Mobiledoc; Lexical-only is rejected.)"),
 };
 const addParams = { name: z.string().describe("Snippet name."), ...contentFields };
 const editParams = { id: z.string(), name: z.string().optional().describe("New snippet name."), ...contentFields };

@@ -29,7 +29,9 @@ export function withToolPolicy(server: McpServer): McpServer {
           console.error(`[ghost-mcp] skipping write tool "${name}" (GHOST_MCP_READONLY)`);
           return undefined;
         }
-        return (target.tool as (...a: unknown[]) => unknown)(name, ...rest);
+        // Invoke via Reflect.apply with an explicit receiver so `this` is the real
+        // McpServer instance (member-access already binds it, but this is unambiguous).
+        return Reflect.apply(target.tool as (...a: unknown[]) => unknown, target, [name, ...rest]);
       };
     },
   }) as McpServer;
