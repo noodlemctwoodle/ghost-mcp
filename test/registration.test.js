@@ -1,5 +1,5 @@
-// Offline registration policy tests: spawn the built server with a dummy (well-
-// formed but non-functional) key and list tools under each policy mode. No
+// Offline registration policy tests: spawn the built server with a dummy key
+// (well-formed but non-functional) and list tools under each policy mode. No
 // network and no real credentials — tools/list only exercises registration. Runs
 // in CI to lock in the experimental opt-in, read-only mode, and disabled-tools.
 const { test } = require("node:test");
