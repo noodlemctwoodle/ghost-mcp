@@ -9,6 +9,7 @@ const suites = [
   ["settings", require("./settings.cjs")],
   ["gating", require("./gating.cjs")],
   ["leak", require("./leak.cjs")],
+  ["experimental", require("./experimental.cjs")],
 ];
 
 (async () => {
