@@ -17,7 +17,7 @@ pull request, or discussion for a suspected vulnerability.
 
 Use GitHub's **private vulnerability reporting** on this repository: open the
 **Security** tab and click **Report a vulnerability**. This creates a private
-advisory visible only to you and the maintainer.
+advisory visible to you and repository maintainers (e.g. admins/maintainers/security managers) with access to Security Advisories.
 
 When you report, please include where possible:
 
