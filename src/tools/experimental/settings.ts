@@ -7,7 +7,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { adminApiRequest } from "../../ghostAdminClient";
-import { validateSelectableList, settingSchema } from "../../schemas";
+import { validateEntityList, settingSchema } from "../../schemas";
 import { GHOST_STAFF_TOKEN } from "../../config";
 import { GhostError } from "../../ghostError";
 import { runTool } from "../helpers";
@@ -30,7 +30,7 @@ export function registerSettingsTools(server: McpServer) {
     runTool(async () => {
       const data = await adminApiRequest("settings");
       const settings = data.settings ?? [];
-      validateSelectableList(settingSchema, settings);
+      validateEntityList(settingSchema, settings);
       return settings;
     })
   );
@@ -66,7 +66,7 @@ export function registerSettingsTools(server: McpServer) {
       const payload = keys.map((key) => ({ key, value: updates[key] }));
       const data = await adminApiRequest("settings", { method: "PUT", bodyArray: payload, staff: true });
       const settings = data.settings ?? [];
-      validateSelectableList(settingSchema, settings);
+      validateEntityList(settingSchema, settings);
       return { updated: keys, settings };
     })
   );

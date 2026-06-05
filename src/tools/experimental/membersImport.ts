@@ -10,6 +10,9 @@ import { adminApiUpload } from "../../ghostAdminClient";
 import { GhostError } from "../../ghostError";
 import { runTool } from "../helpers";
 
+// Match the 25 MB upload cap in adminApiUpload so oversized input fails fast.
+const MAX_CSV_BYTES = 25 * 1024 * 1024;
+
 const importParams = {
   csv: z
     .string()
@@ -31,6 +34,9 @@ export function registerMembersImportTools(server: McpServer) {
       }
       if (!csv || !csv.trim()) {
         throw new GhostError("Provide CSV content via `csv` or a local `file_path`.");
+      }
+      if (Buffer.byteLength(csv, "utf8") > MAX_CSV_BYTES) {
+        throw new GhostError(`CSV is too large (limit ${MAX_CSV_BYTES / 1024 / 1024} MB). Split the import into smaller files.`);
       }
       return await adminApiUpload("members/upload", {
         field: "membersfile",

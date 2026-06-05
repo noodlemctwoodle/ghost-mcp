@@ -175,6 +175,17 @@ export function validateSelectableList(schema: z.ZodObject<any>, data: unknown):
   return data;
 }
 
+// Strict array validation: asserts an array and validates each item with
+// validateEntity (no `.partial()`). For responses with no `fields` selector,
+// where every item must be fully formed — e.g. settings always carry `key`.
+export function validateEntityList<T extends z.ZodTypeAny>(schema: T, data: unknown): unknown {
+  if (!Array.isArray(data)) {
+    throw new GhostError("Unexpected Ghost response shape — expected an array of entities.");
+  }
+  for (const item of data) validateEntity(schema, item);
+  return data;
+}
+
 // Validate the entity array inside a Ghost browse envelope ({ <key>: [...], meta })
 // and return the envelope unchanged, preserving pagination meta. Field-tolerant on
 // the items (browse may use a `fields` selector), but fails fast if the key is
