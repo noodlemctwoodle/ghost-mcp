@@ -75,18 +75,34 @@ async function run(env) {
     fs.unlinkSync(p);
   } catch (e) { t.ok("media_upload", false, String(e)); }
 
-  // MEMBERS import (integration) + cleanup
+  // MEMBERS import (integration) - strict: assert imported count, the row actually
+  // materialises, then clean up. (Small CSV imports are synchronous in Ghost.)
   try {
     const email = `${TAG}-import@example.com`;
     const csv = `email,name\n${email},${TAG} Import`;
     let r = await call(c, "members_import", { csv });
-    t.ok("members_import", !r.isError, r.isError ? r.text.slice(0, 120) : "");
-    // cleanup: find + delete the imported member
+    t.ok("members_import(accepted)", !r.isError, r.isError ? r.text.slice(0, 120) : "");
+    t.ok("members_import(stats.imported === 1)", r.json?.meta?.stats?.imported === 1, `imported=${JSON.stringify(r.json?.meta?.stats?.imported)}`);
     r = await call(c, "members_browse", { filter: `email:'${email}'`, limit: 1 });
     const id = (Array.isArray(r.json) ? r.json : [])[0]?.id;
-    if (id) { await call(c, "members_delete", { id }); t.ok("members_import(cleanup)", true); }
-    else t.ok("members_import(cleanup)", true, "no member to delete (import may dedupe)");
+    t.ok("members_import(member exists)", !!id, id ? "" : "imported member not found in browse");
+    if (id) { const d = await call(c, "members_delete", { id }); t.ok("members_import(cleanup)", !d.isError); }
+    else t.ok("members_import(cleanup)", false, "no member to delete");
   } catch (e) { t.ok("members_import", false, String(e)); }
+
+  // MEMBERS import size guard: an oversized CSV is rejected before any upload.
+  // Written to a local file so only the path crosses stdio, not 25+ MB of args.
+  try {
+    const big = path.join(os.tmpdir(), `${TAG}-big.csv`);
+    const fd = fs.openSync(big, "w");
+    fs.writeSync(fd, "email,name\n");
+    const chunk = `${"x".repeat(40)}@example.com,${"y".repeat(40)}\n`.repeat(12000); // ~1.1 MB
+    for (let i = 0; i < 24; i++) fs.writeSync(fd, chunk); // ~27 MB > 25 MB cap
+    fs.closeSync(fd);
+    const r = await call(c, "members_import", { file_path: big });
+    t.ok("members_import(>25MB rejected pre-upload)", r.isError && /too large/i.test(r.text), r.text.slice(0, 100));
+    fs.rmSync(big, { force: true });
+  } catch (e) { t.ok("members_import(>25MB rejected pre-upload)", false, String(e)); }
 
   // SNIPPETS CRUD (staff)
   try {
