@@ -7,8 +7,8 @@ and acts on a production Ghost site on behalf of an LLM, so it is security-sensi
 ## Architecture
 - Tools live in `src/tools/`; opt-in experimental tools in `src/tools/experimental/`.
 - `@tryghost/admin-api` plus a thin direct client (`src/ghostAdminClient.ts`) for
-  endpoints the official client omits. `runTool()` wraps every handler and converts
-  thrown errors into clean `GhostError` results.
+  endpoints the official client omits. `runTool()` wraps every handler and turns a
+  thrown error into a clean MCP error result (its text produced by `formatGhostError`).
 - Most tools validate their response with a zod helper from `src/schemas.ts`.
   Intentional exceptions: `*_delete` and confirm-gate dry-runs return a status
   string, and uploads/downloads (`redirects_download`, `redirects_upload`,
@@ -21,9 +21,11 @@ and acts on a production Ghost site on behalf of an LLM, so it is security-sensi
 2. No SSRF. Outbound requests built from user/model input must use
    `assertSafePublicUrl` + `guardedAgents` (`src/security.ts`): public hosts only, no
    redirects, size/time caps.
-3. Token routing & gating. Staff-only endpoints route with `staff: true`. Destructive
-   config writes (`settings_edit`, `redirects_upload`, `themes_delete`) keep their
-   confirmation gate (`confirmationRequired`).
+3. Token routing & gating. Staff-only endpoints use the staff token: the official
+   client via `ghostStaffClient` (e.g. `users_edit`/`users_delete`), the direct client
+   via `staff: true` (invites + experimental). Destructive config writes
+   (`settings_edit`, `redirects_upload`, `themes_delete`) keep their confirmation gate
+   (`confirmationRequired`).
 4. Response validation. Entity-returning browse/read/add/edit tools validate output
    (writes -> `validateWriteEnvelope`/`validateEntity`; browse/read -> the
    field-tolerant validators). Status strings (deletes, dry-runs) and raw upload/
