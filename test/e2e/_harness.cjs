@@ -2,29 +2,35 @@
 // Shared helpers for the LIVE end-to-end regression suite.
 //
 // Credentials are read from the environment (never committed). A hard guard
-// refuses to run unless GHOST_TEST_HOST is set and GHOST_API_URL contains it —
-// so the suite can never be pointed at a production site by accident.
+// refuses to run unless GHOST_DEVELOPMENT is explicitly set true — so the suite
+// can never be pointed at a production site by accident (it fails closed).
 //
+//   GHOST_DEVELOPMENT=true \
 //   GHOST_API_URL=https://your-test.example.com \
 //   GHOST_ADMIN_API_KEY=<id:secret> \
-//   GHOST_STAFF_TOKEN=<id:secret>            # optional, enables staff/invite tools \
-//   GHOST_TEST_HOST=your-test.example.com \
+//   GHOST_STAFF_TOKEN=<id:secret> \
 //   npm run test:e2e
+//   (GHOST_STAFF_TOKEN is optional and enables the staff/invite tools.)
 const { spawn } = require("node:child_process");
 const path = require("node:path");
 
 const SERVER = path.resolve(__dirname, "../../build/server.js");
 
-// Returns the live env, or null when not configured (callers should skip).
-// Throws if configured but the URL does not match the declared test host.
+// Returns the live env, or null when no credentials are configured (callers
+// should skip). Throws if credentials are present but GHOST_DEVELOPMENT is not set.
 function configuredEnv() {
   const url = process.env.GHOST_API_URL || "";
   const key = process.env.GHOST_ADMIN_API_KEY || "";
-  const testHost = process.env.GHOST_TEST_HOST || "";
-  if (!url || !key || !testHost) return null;
-  if (!url.includes(testHost)) {
+  // Developer gate: destructive tests run only when the target is explicitly
+  // flagged a development instance. Default (unset = false) treats it as production
+  // and refuses, so forgetting to set it fails closed. This is a plain flag with no
+  // host cross-check — only enable it when GHOST_API_URL points at a throwaway site.
+  const development = /^(1|true|yes|on)$/i.test(process.env.GHOST_DEVELOPMENT || "");
+  if (!url || !key) return null;
+  if (!development) {
     throw new Error(
-      `E2E guard: GHOST_API_URL (${url}) does not contain GHOST_TEST_HOST (${testHost}). Refusing to run.`
+      "E2E guard: GHOST_DEVELOPMENT is not true — refusing to run destructive tests. " +
+        "Set GHOST_DEVELOPMENT=true only when GHOST_API_URL points at a development/test instance."
     );
   }
   return {

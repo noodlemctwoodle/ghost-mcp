@@ -1,6 +1,6 @@
 // test/e2e/run.cjs
 // Orchestrates the live end-to-end regression suites. Skips cleanly (exit 0)
-// when credentials/GHOST_TEST_HOST are not configured, so it is safe to wire
+// when credentials are not configured, so it is safe to wire
 // into any pipeline; exits non-zero if any live assertion fails.
 const { configuredEnv } = require("./_harness.cjs");
 
@@ -22,8 +22,8 @@ const suites = [
   }
   if (!env) {
     console.log(
-      "E2E skipped: set GHOST_API_URL, GHOST_ADMIN_API_KEY and GHOST_TEST_HOST " +
-      "(plus optional GHOST_STAFF_TOKEN) to run the live suite."
+      "E2E skipped: set GHOST_API_URL and GHOST_ADMIN_API_KEY (plus GHOST_DEVELOPMENT=true " +
+      "and optional GHOST_STAFF_TOKEN) to run the live suite."
     );
     process.exit(0);
   }
