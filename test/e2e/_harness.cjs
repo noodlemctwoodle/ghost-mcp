@@ -16,12 +16,22 @@ const path = require("node:path");
 const SERVER = path.resolve(__dirname, "../../build/server.js");
 
 // Returns the live env, or null when not configured (callers should skip).
-// Throws if configured but the URL does not match the declared test host.
+// Throws if configured but not flagged GHOST_DEVELOPMENT, or if the URL does not
+// match the declared test host.
 function configuredEnv() {
   const url = process.env.GHOST_API_URL || "";
   const key = process.env.GHOST_ADMIN_API_KEY || "";
   const testHost = process.env.GHOST_TEST_HOST || "";
+  // Optional developer gate: destructive tests run only when the target is
+  // explicitly flagged a development instance. Default (unset = false) treats it as
+  // production and refuses, so forgetting to set it fails closed.
+  const development = /^(1|true|yes|on)$/i.test(process.env.GHOST_DEVELOPMENT || "");
   if (!url || !key || !testHost) return null;
+  if (!development) {
+    throw new Error(
+      "E2E guard: GHOST_DEVELOPMENT is not true — refusing to run destructive tests against a target not flagged as development."
+    );
+  }
   if (!url.includes(testHost)) {
     throw new Error(
       `E2E guard: GHOST_API_URL (${url}) does not contain GHOST_TEST_HOST (${testHost}). Refusing to run.`
